@@ -35,6 +35,7 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         address indexed owner,
         uint256 reward
     );
+
     event Burned(address indexed operator);
 
     constructor(
