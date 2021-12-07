@@ -10,14 +10,14 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 
 contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
-    uint256 public immutable BEND_TOKEN_REWARD_PER_ETH;
+    uint256 public START_BLOCK;
+    uint256 public END_BLOCK;
     address public immutable BEND_TOKEN_ADDRESS;
+    uint256 public immutable BEND_TOKEN_REWARD_PER_ETH;
     address public immutable CRYPTO_PUNKS_ADDRESS;
     uint256 public immutable CRYPTO_PUNKS_REWARD;
     address[] public ERC721_NFT_WHITELIST;
     uint256[] public ERC721_NFT_BEND_REWARD;
-    uint256 public START_BLOCK;
-    uint256 public END_BLOCK;
 
     // nft colelction address => token id => owner address
     mapping(address => mapping(uint256 => address)) public claimedRecord;
