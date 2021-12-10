@@ -213,4 +213,24 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
 
         emit Activate(msg.sender, START_BLOCK, END_BLOCK);
     }
+
+    function emergencyTokenTransfer(
+        address token,
+        address to,
+        uint256 amount
+    ) external onlyOwner {
+        IERC20(token).transfer(to, amount);
+    }
+
+    function emergencyEtherTransfer(address to, uint256 amount)
+        external
+        onlyOwner
+    {
+        _safeTransferETH(to, amount);
+    }
+
+    function _safeTransferETH(address to, uint256 value) internal {
+        (bool success, ) = to.call{value: value}(new bytes(0));
+        require(success, "ETH_TRANSFER_FAILED");
+    }
 }
