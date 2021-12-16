@@ -22,7 +22,8 @@ import { expect } from 'chai';
 import { ZERO_ADDRESS } from '../helpers/constants';
 
 describe('Competition', async () => {
-  const oneBend = new BigNumber(10).shiftedBy(18);
+  const oneBend = new BigNumber(1).shiftedBy(18);
+  const oneETH = new BigNumber(1).shiftedBy(18);
 
   before(async () => {
     BigNumber.config({
@@ -33,7 +34,7 @@ describe('Competition', async () => {
     await rawBRE.run('set-DRE');
   });
 
-  it('should cliam with erc721', async () => {
+  it('should claim with erc721', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
@@ -42,12 +43,13 @@ describe('Competition', async () => {
     const bendCompetition = await deployBendCompetition([
       '0',
       '999999999',
+      '9999999999',
       bendToken.address,
       '0',
       ZERO_ADDRESS,
-      '0',
       [erc721Token.address],
-      [oneBend.div(2).toFixed(0)],
+      oneBend.div(2).toFixed(0),
+      oneETH.toFixed(0),
     ]);
 
     await waitForTx(await bendToken.mint(oneBend.toFixed(0)));
@@ -63,19 +65,29 @@ describe('Competition', async () => {
     expect(secondSignerBalane.toString()).to.equal('0');
 
     await waitForTx(await erc721Token.connect(secondSigner).mint(1));
+
+    const tx = await waitForTx(
+      await bendCompetition.connect(secondSigner).claimWithERC721({
+        value: oneETH.toFixed(0),
+      })
+    );
+
     await waitForTx(
-      await bendCompetition.connect(secondSigner).claimWithERC721()
+      await bendCompetition.connect(secondSigner).claimWithERC721({
+        value: oneETH.toFixed(0),
+      })
     );
 
     [competitionBalance, secondSignerBalane] = await Promise.all([
       bendToken.balanceOf(bendCompetition.address),
       bendToken.balanceOf(await secondSigner.getAddress()),
     ]);
+
     expect(competitionBalance.toString()).to.equal(oneBend.div(2).toFixed(0));
     expect(secondSignerBalane.toString()).to.equal(oneBend.div(2).toFixed(0));
   });
 
-  it('should cliam crypto punks', async () => {
+  it('should claim crypto punks', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
@@ -85,12 +97,13 @@ describe('Competition', async () => {
     const bendCompetition = await deployBendCompetition([
       '0',
       '999999999',
+      '9999999999',
       bendToken.address,
       '0',
       cryptoPunksMarket.address,
+      [],
       oneBend.div(4).toFixed(0),
-      [],
-      [],
+      oneETH.toFixed(0),
     ]);
 
     await waitForTx(await bendToken.mint(oneBend.toFixed(0)));
@@ -109,7 +122,9 @@ describe('Competition', async () => {
     await waitForTx(await cryptoPunksMarket.connect(secondSigner).getPunk(2));
 
     await waitForTx(
-      await bendCompetition.connect(secondSigner).claimWithCryptoPunks([1, 2])
+      await bendCompetition.connect(secondSigner).claimWithCryptoPunks([1, 2], {
+        value: oneETH.multipliedBy(2).toFixed(0),
+      })
     );
 
     [competitionBalance, secondSignerBalane] = await Promise.all([
@@ -120,20 +135,21 @@ describe('Competition', async () => {
     expect(secondSignerBalane.toString()).to.equal(oneBend.div(2).toFixed(0));
   });
 
-  it('should cliam with eth', async () => {
+  it('should claim with eth', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
 
     const bendCompetition = await deployBendCompetition([
       '0',
-      '999999999',
+      '1',
+      '99999999',
       bendToken.address,
       oneBend.div(2).toFixed(0),
       ZERO_ADDRESS,
+      [],
       '0',
-      [],
-      [],
+      '0',
     ]);
 
     await waitForTx(await bendToken.mint(oneBend.toFixed(0)));

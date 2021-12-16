@@ -45,7 +45,17 @@ export const deployCryptoPunksMarket = async (args: [], verify?: boolean) =>
   );
 
 export const deployBendCompetition = async (
-  args: [string, string, string, string, string, string, string[], string[]],
+  args: [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string[],
+    string,
+    string
+  ],
   verify?: boolean
 ) =>
   withSaveAndVerify(
