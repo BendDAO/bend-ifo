@@ -10,9 +10,11 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 
 contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
+    uint256 public constant TARGET_ETH_PAYMENT = 5000 * 10**18;
+    uint256[2] public ETH_PAYMENT_RATIO = [100 * 10**18, 10 * 10**18];
+
     uint256 public START_BLOCK;
-    uint256 public PHRASE_ONE_END_BLOCK;
-    uint256 public PHRASE_TWO_END_BLOCK;
+    uint256 public END_BLOCK;
     address public immutable BEND_TOKEN_ADDRESS;
     uint256 public immutable BEND_TOKEN_REWARD_PER_ETH;
     address public immutable CRYPTO_PUNKS_ADDRESS;
@@ -24,11 +26,13 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
     mapping(address => mapping(uint256 => uint256)) public ethPaymentRecord;
     mapping(address => uint256) public claimedCount;
 
+    uint256 ethPaymentForNFT;
+    uint256 ethPaymentForETH;
+
     event Activate(
         address indexed operator,
         uint256 startBlock,
-        uint256 phraseOneEndBlock,
-        uint256 phraseTwoEndBlock
+        uint256 endBlock
     );
 
     event Claimed(
@@ -43,8 +47,7 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
 
     constructor(
         uint256 startBlock,
-        uint256 phraseOneEndBlock,
-        uint256 phraseTwoEndBlock,
+        uint256 endBlock,
         address bendTokenAddress,
         uint256 bendTokenRewardPerETH,
         address cryptoPunksAddress,
@@ -59,30 +62,20 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         BEND_TOKEN_REWARD_PER_ETH_PER_NFT = bendTokenRewardPerETHPerNFT;
         MAX_ETH_PAYMENT_PER_NFT = maxETHPaymentPerNFT;
 
-        activate(startBlock, phraseOneEndBlock, phraseTwoEndBlock);
+        activate(startBlock, endBlock);
     }
 
-    modifier whenPhraseOneAvailable() {
+    modifier whenClaimable() {
         require(
             block.number >= START_BLOCK,
             "too early to claim, please wait until the competition starts"
         );
-        require(
-            block.number < PHRASE_ONE_END_BLOCK,
-            "too late to claim for phrase one"
-        );
 
-        _;
-    }
+        require(block.number <= END_BLOCK, "too late to claim");
 
-    modifier whenPhraseTwoAvailable() {
         require(
-            block.number >= PHRASE_ONE_END_BLOCK,
-            "too early to claim, please wait until the competition starts"
-        );
-        require(
-            block.number < PHRASE_TWO_END_BLOCK,
-            "too late to claim for phrase two"
+            ethPaymentForETH + ethPaymentForNFT <= TARGET_ETH_PAYMENT,
+            "too late, enough eth paid"
         );
 
         _;
@@ -92,7 +85,7 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         external
         payable
         whenNotPaused
-        whenPhraseOneAvailable
+        whenClaimable
         nonReentrant
     {
         uint256 bendBalance = IERC20(BEND_TOKEN_ADDRESS).balanceOf(
@@ -100,8 +93,15 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         );
         require(bendBalance > 0, "insufficient bend balance");
 
+        uint256 maxETHPaymentForNFT = MAX_ETH_PAYMENT_FOR_NFT();
+        require(maxETHPaymentForNFT > 0, "no more quote available");
+
         uint256 bendReward = 0;
         uint256 ethBalance = msg.value;
+
+        if (ethBalance > maxETHPaymentForNFT) {
+            ethBalance = maxETHPaymentForNFT;
+        }
 
         for (
             uint256 collectionIndex = 0;
@@ -143,6 +143,7 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
             }
         }
 
+        ethPaymentForNFT += msg.value - ethBalance;
         _claimBendWithETH(msg.value - ethBalance, bendReward);
     }
 
@@ -150,7 +151,7 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         external
         payable
         whenNotPaused
-        whenPhraseOneAvailable
+        whenClaimable
         nonReentrant
     {
         uint256 bendBalance = IERC20(BEND_TOKEN_ADDRESS).balanceOf(
@@ -158,8 +159,15 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         );
         require(bendBalance > 0, "insufficient bend balance");
 
+        uint256 maxETHPaymentForNFT = MAX_ETH_PAYMENT_FOR_NFT();
+        require(maxETHPaymentForNFT > 0, "no more quote available");
+
         uint256 bendReward = 0;
         uint256 ethBalance = msg.value;
+
+        if (ethBalance > maxETHPaymentForNFT) {
+            ethBalance = maxETHPaymentForNFT;
+        }
 
         for (uint256 i = 0; i < punkIndexes.length && bendBalance > 0; i++) {
             uint256 punkIndex = punkIndexes[i];
@@ -201,6 +209,7 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
             }
         }
 
+        ethPaymentForNFT += msg.value - ethBalance;
         _claimBendWithETH(msg.value - ethBalance, bendReward);
     }
 
@@ -208,22 +217,32 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         external
         payable
         whenNotPaused
-        whenPhraseTwoAvailable
+        whenClaimable
         nonReentrant
     {
         uint256 bendBalance = IERC20(BEND_TOKEN_ADDRESS).balanceOf(
             address(this)
         );
         require(bendBalance > 0, "insufficient bend balance");
-        uint256 bendReward = (msg.value * BEND_TOKEN_REWARD_PER_ETH) / 10**18;
 
-        if (bendReward > bendBalance) {
-            bendReward = bendBalance;
+        uint256 maxETHPaymentForETH = MAX_ETH_PAYMENT_FOR_ETH();
+        require(maxETHPaymentForETH > 0, "too late, enough eth paid");
+
+        uint256 ethBalance = msg.value;
+        if (ethBalance > maxETHPaymentForETH) {
+            ethBalance = maxETHPaymentForETH;
         }
 
-        emit Claimed(address(0), 0, msg.sender, msg.value, bendReward);
+        uint256 bendReward = (ethBalance * BEND_TOKEN_REWARD_PER_ETH) / 10**18;
+        if (bendReward > bendBalance) {
+            bendReward = bendBalance;
+            ethBalance = (bendReward * 10**18) / BEND_TOKEN_REWARD_PER_ETH;
+        }
 
-        _claimBendWithETH(msg.value, bendReward);
+        emit Claimed(address(0), 0, msg.sender, ethBalance, bendReward);
+
+        ethPaymentForETH += ethBalance;
+        _claimBendWithETH(ethBalance, bendReward);
     }
 
     function burn() external onlyOwner {
@@ -239,30 +258,16 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         _unpause();
     }
 
-    function activate(
-        uint256 startBlock,
-        uint256 phraseOneEndBlock,
-        uint256 phraseTwoEndBlock
-    ) public onlyOwner {
+    function activate(uint256 startBlock, uint256 endBlock) public onlyOwner {
         require(
-            startBlock < phraseOneEndBlock,
+            startBlock < endBlock,
             "start block should be less than end block"
-        );
-        require(
-            phraseOneEndBlock < phraseTwoEndBlock,
-            "phrase two end block should be greater than phrase one end block"
         );
 
         START_BLOCK = startBlock;
-        PHRASE_ONE_END_BLOCK = phraseOneEndBlock;
-        PHRASE_TWO_END_BLOCK = phraseTwoEndBlock;
+        END_BLOCK = endBlock;
 
-        emit Activate(
-            msg.sender,
-            START_BLOCK,
-            PHRASE_ONE_END_BLOCK,
-            PHRASE_TWO_END_BLOCK
-        );
+        emit Activate(msg.sender, START_BLOCK, END_BLOCK);
     }
 
     function emergencyTokenTransfer(
@@ -278,6 +283,22 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         onlyOwner
     {
         _safeTransferETH(to, amount);
+    }
+
+    function MAX_ETH_PAYMENT_FOR_NFT() public view returns (uint256) {
+        return TARGET_ETH_PAYMENT - ethPaymentForNFT - ethPaymentForETH;
+    }
+
+    function MAX_ETH_PAYMENT_FOR_ETH() public view returns (uint256) {
+        uint256 payment = (ethPaymentForNFT / ETH_PAYMENT_RATIO[0]) *
+            ETH_PAYMENT_RATIO[1] -
+            ethPaymentForETH;
+
+        uint256 remain = TARGET_ETH_PAYMENT -
+            ethPaymentForNFT -
+            ethPaymentForETH;
+
+        return payment > remain ? remain : payment;
     }
 
     function _safeTransferETH(address to, uint256 value) internal {

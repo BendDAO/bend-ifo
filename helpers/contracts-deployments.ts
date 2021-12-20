@@ -51,7 +51,6 @@ export const deployBendCompetition = async (
     string,
     string,
     string,
-    string,
     string[],
     string,
     string
