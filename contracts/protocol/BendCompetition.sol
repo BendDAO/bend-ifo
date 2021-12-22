@@ -10,7 +10,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 
 contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
-    uint256 public constant TARGET_ETH_PAYMENT = 5000 * 10**18;
+    uint256 public constant TARGET_ETH_PAYMENT_FOR_NFT = 5000 * 10**18;
+    uint256 public constant TARGET_ETH_PAYMENT_FOR_ETH = 500 * 10**18;
     uint256[2] public ETH_PAYMENT_RATIO = [100 * 10**18, 10 * 10**18];
 
     uint256 public START_BLOCK;
@@ -73,11 +74,6 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
 
         require(block.number <= END_BLOCK, "too late to claim");
 
-        require(
-            ethPaymentForETH + ethPaymentForNFT <= TARGET_ETH_PAYMENT,
-            "too late, enough eth paid"
-        );
-
         _;
     }
 
@@ -88,6 +84,10 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         whenClaimable
         nonReentrant
     {
+        require(
+            ethPaymentForNFT < TARGET_ETH_PAYMENT_FOR_NFT,
+            "too late, enough payment already"
+        );
         uint256 bendBalance = IERC20(BEND_TOKEN_ADDRESS).balanceOf(
             address(this)
         );
@@ -154,6 +154,10 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         whenClaimable
         nonReentrant
     {
+        require(
+            ethPaymentForNFT < TARGET_ETH_PAYMENT_FOR_NFT,
+            "too late, enough payment already"
+        );
         uint256 bendBalance = IERC20(BEND_TOKEN_ADDRESS).balanceOf(
             address(this)
         );
@@ -220,6 +224,10 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         whenClaimable
         nonReentrant
     {
+        require(
+            ethPaymentForETH < TARGET_ETH_PAYMENT_FOR_ETH,
+            "too late, enough payment already"
+        );
         uint256 bendBalance = IERC20(BEND_TOKEN_ADDRESS).balanceOf(
             address(this)
         );
@@ -286,7 +294,7 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
     }
 
     function MAX_ETH_PAYMENT_FOR_NFT() public view returns (uint256) {
-        return TARGET_ETH_PAYMENT - ethPaymentForNFT - ethPaymentForETH;
+        return TARGET_ETH_PAYMENT_FOR_NFT - ethPaymentForNFT;
     }
 
     function MAX_ETH_PAYMENT_FOR_ETH() public view returns (uint256) {
@@ -294,9 +302,7 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
             ETH_PAYMENT_RATIO[1] -
             ethPaymentForETH;
 
-        uint256 remain = TARGET_ETH_PAYMENT -
-            ethPaymentForNFT -
-            ethPaymentForETH;
+        uint256 remain = TARGET_ETH_PAYMENT_FOR_ETH - ethPaymentForETH;
 
         return payment > remain ? remain : payment;
     }

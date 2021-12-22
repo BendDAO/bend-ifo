@@ -259,7 +259,7 @@ describe('Competition', async () => {
     ]);
 
     expect(maxETHPaymentForNFT.toString()).to.equal(
-      oneETH.multipliedBy(4899).toFixed(0)
+      oneETH.multipliedBy(4900).toFixed(0)
     );
     expect(maxETHPaymentForETH.toString()).to.equal(
       oneETH.multipliedBy(9).toFixed(0)
