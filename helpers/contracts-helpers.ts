@@ -143,7 +143,7 @@ export const deployContract = async <ContractType extends Contract>(
 export const withSaveAndVerify = async <ContractType extends Contract>(
   instance: ContractType,
   id: string,
-  args: (string | string[])[],
+  args: (string | string[] | any)[],
   verify?: boolean
 ): Promise<ContractType> => {
   //console.log('contracts-helpers:withSaveAndVerify,','id',id)

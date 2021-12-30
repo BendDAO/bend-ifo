@@ -45,21 +45,12 @@ export const deployCryptoPunksMarket = async (args: [], verify?: boolean) =>
   );
 
 export const deployBendCompetition = async (
-  args: [
-    string,
-    string,
-    string,
-    string,
-    string,
-    string[],
-    string,
-    string
-  ],
+  args: Parameters<typeof BendCompetition__factory['prototype']['deploy']>,
   verify?: boolean
 ) =>
   withSaveAndVerify(
     await new BendCompetition__factory(await getFirstSigner()).deploy(...args),
     eContractid.BendCompetition,
-    args,
+    [...args],
     verify
   );
