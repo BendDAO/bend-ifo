@@ -1,12 +1,11 @@
 import { BigNumberish } from '@ethersproject/bignumber';
 import {
   CryptoPunksMarket__factory,
-  MintableERC20,
   MintableERC20__factory,
-  MintableERC721,
   MintableERC721__factory,
-  BendCompetition,
   BendCompetition__factory,
+  WETHGateway__factory,
+  Treasury__factory,
 } from '../types';
 import { getFirstSigner } from './contracts-getters';
 import { withSaveAndVerify } from './contracts-helpers';
@@ -52,5 +51,21 @@ export const deployBendCompetition = async (
     await new BendCompetition__factory(await getFirstSigner()).deploy(...args),
     eContractid.BendCompetition,
     [...args],
+    verify
+  );
+
+export const deployWETHGateway = async (args: [], verify?: boolean) =>
+  withSaveAndVerify(
+    await new WETHGateway__factory(await getFirstSigner()).deploy(...args),
+    eContractid.WETHGateway,
+    [],
+    verify
+  );
+
+export const deployTreasury = async (args: [], verify?: boolean) =>
+  withSaveAndVerify(
+    await new Treasury__factory(await getFirstSigner()).deploy(...args),
+    eContractid.Treasury,
+    [],
     verify
   );

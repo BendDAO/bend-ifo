@@ -33,8 +33,8 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
 
     // nft colelction address => token id => eth payment
     mapping(address => mapping(uint256 => uint256)) public ethPaymentRecord;
-    uint256 ethPaymentTotal;
-    uint256 dividend;
+    uint256 public ethPaymentTotal;
+    uint256 public dividend;
 
     event Activate(
         address indexed operator,
@@ -228,7 +228,7 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
 
         IWETHGateway(ADDRESS_CONFIG.WETH_GATEWAY).depositETH{
             value: amountToPool
-        }(msg.sender, 0);
+        }(owner(), 0);
         _safeTransferETH(ADDRESS_CONFIG.TREASURY, amountToTreasury);
 
         emit DrawDividend(msg.sender, amountToPool, amountToTreasury);

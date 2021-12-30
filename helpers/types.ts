@@ -18,6 +18,8 @@ export enum eContractid {
   MintableERC721 = 'MintableERC721',
   CryptoPunksMarket = 'CryptoPunksMarket',
   BendCompetition = 'BendCompetition',
+  WETHGateway = 'WETHGateway',
+  Treasury = 'Treasury',
 }
 
 export type tEthereumAddress = string;
