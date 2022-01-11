@@ -3,7 +3,7 @@ import {
   CryptoPunksMarket__factory,
   MintableERC20__factory,
   MintableERC721__factory,
-  BendCompetition__factory,
+  BendCompetitionTest__factory,
   WETHGateway__factory,
   Treasury__factory,
 } from '../types';
@@ -43,12 +43,14 @@ export const deployCryptoPunksMarket = async (args: [], verify?: boolean) =>
     verify
   );
 
-export const deployBendCompetition = async (
-  args: Parameters<typeof BendCompetition__factory['prototype']['deploy']>,
+export const deployBendCompetitionTest = async (
+  args: Parameters<typeof BendCompetitionTest__factory['prototype']['deploy']>,
   verify?: boolean
 ) =>
   withSaveAndVerify(
-    await new BendCompetition__factory(await getFirstSigner()).deploy(...args),
+    await new BendCompetitionTest__factory(await getFirstSigner()).deploy(
+      ...args
+    ),
     eContractid.BendCompetition,
     [...args],
     verify

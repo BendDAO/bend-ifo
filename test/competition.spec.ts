@@ -3,7 +3,7 @@ import BigNumber from 'bignumber.js';
 import dayjs from 'dayjs';
 
 import {
-  deployBendCompetition,
+  deployBendCompetitionTest,
   deployCryptoPunksMarket,
   deployMintableERC20,
   deployMintableERC721,
@@ -43,21 +43,20 @@ describe('Competition', async () => {
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const erc721Token = await deployMintableERC721(['ERC721 Token', 'NFT']);
 
-    const bendCompetition = await deployBendCompetition([
+    const bendCompetition = await deployBendCompetitionTest([
       {
-        TARGET_ETH_PAYMENT: oneETH.multipliedBy(5000).toFixed(0),
+        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
+        TREASURY_ADDRESS: ZERO_ADDRESS,
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        CRYPTO_PUNKS_ADDRESS: ZERO_ADDRESS,
+        ERC721_NFT_ADDRESSES: [erc721Token.address],
+
+        START_TIMESTAMP: 0,
+        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 80,
-        TIMESTAMP_RANGE: [dayjs().unix(), dayjs().add(1, 'year').unix()],
+        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
-      },
-      {
-        WETH_GATEWAY: ZERO_ADDRESS,
-        TREASURY: ZERO_ADDRESS,
-        BEND_TOKEN: bendToken.address,
-        CRYPTO_PUNKS: ZERO_ADDRESS,
-        ERC721_NFT: [erc721Token.address],
       },
     ]);
 
@@ -97,21 +96,20 @@ describe('Competition', async () => {
     const cryptoPunksMarket = await deployCryptoPunksMarket([]);
     await waitForTx(await cryptoPunksMarket.allInitialOwnersAssigned());
 
-    const bendCompetition = await deployBendCompetition([
+    const bendCompetition = await deployBendCompetitionTest([
       {
-        TARGET_ETH_PAYMENT: oneETH.multipliedBy(5000).toFixed(0),
+        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
+        TREASURY_ADDRESS: ZERO_ADDRESS,
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        CRYPTO_PUNKS_ADDRESS: cryptoPunksMarket.address,
+        ERC721_NFT_ADDRESSES: [],
+
+        START_TIMESTAMP: 0,
+        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 80,
-        TIMESTAMP_RANGE: [dayjs().unix(), dayjs().add(1, 'year').unix()],
+        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(4).toFixed(0),
         MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
-      },
-      {
-        WETH_GATEWAY: ZERO_ADDRESS,
-        TREASURY: ZERO_ADDRESS,
-        BEND_TOKEN: bendToken.address,
-        CRYPTO_PUNKS: cryptoPunksMarket.address,
-        ERC721_NFT: [],
       },
     ]);
 
@@ -152,21 +150,20 @@ describe('Competition', async () => {
     const cryptoPunksMarket = await deployCryptoPunksMarket([]);
     await waitForTx(await cryptoPunksMarket.allInitialOwnersAssigned());
 
-    const bendCompetition = await deployBendCompetition([
+    const bendCompetition = await deployBendCompetitionTest([
       {
-        TARGET_ETH_PAYMENT: oneETH.multipliedBy(5000).toFixed(0),
+        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
+        TREASURY_ADDRESS: ZERO_ADDRESS,
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        CRYPTO_PUNKS_ADDRESS: cryptoPunksMarket.address,
+        ERC721_NFT_ADDRESSES: [erc721Token.address],
+
+        START_TIMESTAMP: 0,
+        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 80,
-        TIMESTAMP_RANGE: [dayjs().unix(), dayjs().add(1, 'year').unix()],
+        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(4).toFixed(0),
         MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
-      },
-      {
-        WETH_GATEWAY: ZERO_ADDRESS,
-        TREASURY: ZERO_ADDRESS,
-        BEND_TOKEN: bendToken.address,
-        CRYPTO_PUNKS: cryptoPunksMarket.address,
-        ERC721_NFT: [erc721Token.address],
       },
     ]);
 
@@ -212,21 +209,20 @@ describe('Competition', async () => {
     const wethGateway = await deployWETHGateway([]);
     const treasury = await deployTreasury([]);
 
-    const bendCompetition = await deployBendCompetition([
+    const bendCompetition = await deployBendCompetitionTest([
       {
-        TARGET_ETH_PAYMENT: oneETH.multipliedBy(5000).toFixed(0),
+        WETH_GATEWAY_ADDRESS: wethGateway.address,
+        TREASURY_ADDRESS: treasury.address,
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        CRYPTO_PUNKS_ADDRESS: ZERO_ADDRESS,
+        ERC721_NFT_ADDRESSES: [erc721Token.address],
+
+        START_TIMESTAMP: 0,
+        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 80,
-        TIMESTAMP_RANGE: [dayjs().unix(), dayjs().add(1, 'year').unix()],
+        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
-      },
-      {
-        WETH_GATEWAY: wethGateway.address,
-        TREASURY: treasury.address,
-        BEND_TOKEN: bendToken.address,
-        CRYPTO_PUNKS: ZERO_ADDRESS,
-        ERC721_NFT: [erc721Token.address],
       },
     ]);
 
@@ -297,21 +293,20 @@ describe('Competition', async () => {
     const wethGateway = await deployWETHGateway([]);
     const treasury = await deployTreasury([]);
 
-    const bendCompetition = await deployBendCompetition([
+    const bendCompetition = await deployBendCompetitionTest([
       {
-        TARGET_ETH_PAYMENT: oneETH.multipliedBy(5000).toFixed(0),
+        WETH_GATEWAY_ADDRESS: wethGateway.address,
+        TREASURY_ADDRESS: treasury.address,
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        CRYPTO_PUNKS_ADDRESS: ZERO_ADDRESS,
+        ERC721_NFT_ADDRESSES: [erc721Token.address],
+
+        START_TIMESTAMP: 0,
+        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 80,
-        TIMESTAMP_RANGE: [dayjs().unix(), dayjs().add(1, 'year').unix()],
+        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(1000).toFixed(0),
         MAX_ETH_PAYMENT_PER_NFT: oneETH.multipliedBy(1000).toFixed(0),
-      },
-      {
-        WETH_GATEWAY: wethGateway.address,
-        TREASURY: treasury.address,
-        BEND_TOKEN: bendToken.address,
-        CRYPTO_PUNKS: ZERO_ADDRESS,
-        ERC721_NFT: [erc721Token.address],
       },
     ]);
 
@@ -385,24 +380,20 @@ describe('Competition', async () => {
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const erc721Token = await deployMintableERC721(['ERC721 Token', 'NFT']);
 
-    const bendCompetition = await deployBendCompetition([
+    const bendCompetition = await deployBendCompetitionTest([
       {
-        TARGET_ETH_PAYMENT: oneETH.multipliedBy(5000).toFixed(0),
+        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
+        TREASURY_ADDRESS: ZERO_ADDRESS,
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        CRYPTO_PUNKS_ADDRESS: ZERO_ADDRESS,
+        ERC721_NFT_ADDRESSES: [erc721Token.address],
+
+        START_TIMESTAMP: dayjs().add(1, 'day').unix(),
+        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 80,
-        TIMESTAMP_RANGE: [
-          dayjs().add(1, 'day').unix(),
-          dayjs().add(1, 'year').unix(),
-        ],
+        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
-      },
-      {
-        WETH_GATEWAY: ZERO_ADDRESS,
-        TREASURY: ZERO_ADDRESS,
-        BEND_TOKEN: bendToken.address,
-        CRYPTO_PUNKS: ZERO_ADDRESS,
-        ERC721_NFT: [erc721Token.address],
       },
     ]);
 
@@ -434,24 +425,20 @@ describe('Competition', async () => {
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const erc721Token = await deployMintableERC721(['ERC721 Token', 'NFT']);
 
-    const bendCompetition = await deployBendCompetition([
+    const bendCompetition = await deployBendCompetitionTest([
       {
-        TARGET_ETH_PAYMENT: oneETH.multipliedBy(5000).toFixed(0),
+        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
+        TREASURY_ADDRESS: ZERO_ADDRESS,
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        CRYPTO_PUNKS_ADDRESS: ZERO_ADDRESS,
+        ERC721_NFT_ADDRESSES: [erc721Token.address],
+
+        START_TIMESTAMP: dayjs().subtract(2, 'day').unix(),
+        END_TIMESTAMP: dayjs().subtract(1, 'day').unix(),
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 80,
-        TIMESTAMP_RANGE: [
-          dayjs().subtract(2, 'day').unix(),
-          dayjs().subtract(1, 'day').unix(),
-        ],
+        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
-      },
-      {
-        WETH_GATEWAY: ZERO_ADDRESS,
-        TREASURY: ZERO_ADDRESS,
-        BEND_TOKEN: bendToken.address,
-        CRYPTO_PUNKS: ZERO_ADDRESS,
-        ERC721_NFT: [erc721Token.address],
       },
     ]);
 
@@ -484,21 +471,20 @@ describe('Competition', async () => {
     const cryptoPunksMarket = await deployCryptoPunksMarket([]);
     await waitForTx(await cryptoPunksMarket.allInitialOwnersAssigned());
 
-    const bendCompetition = await deployBendCompetition([
+    const bendCompetition = await deployBendCompetitionTest([
       {
-        TARGET_ETH_PAYMENT: oneETH.multipliedBy(5000).toFixed(0),
+        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
+        TREASURY_ADDRESS: ZERO_ADDRESS,
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        CRYPTO_PUNKS_ADDRESS: cryptoPunksMarket.address,
+        ERC721_NFT_ADDRESSES: [erc721Token.address],
+
+        START_TIMESTAMP: 0,
+        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 80,
-        TIMESTAMP_RANGE: [dayjs().unix(), dayjs().add(1, 'year').unix()],
+        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(4).toFixed(0),
         MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
-      },
-      {
-        WETH_GATEWAY: ZERO_ADDRESS,
-        TREASURY: ZERO_ADDRESS,
-        BEND_TOKEN: bendToken.address,
-        CRYPTO_PUNKS: cryptoPunksMarket.address,
-        ERC721_NFT: [erc721Token.address],
       },
     ]);
 

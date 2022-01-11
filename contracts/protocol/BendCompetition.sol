@@ -10,22 +10,19 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 
-contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
-    struct SystemParameter {
-        uint256 TARGET_ETH_PAYMENT;
+abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
+    struct Config {
+        address BEND_TOKEN_ADDRESS;
+        address WETH_GATEWAY_ADDRESS;
+        address TREASURY_ADDRESS;
+        address CRYPTO_PUNKS_ADDRESS;
+        address[] ERC721_NFT_ADDRESSES;
+        uint256 START_TIMESTAMP;
+        uint256 END_TIMESTAMP;
         uint256 AUTO_DRAW_DIVIDEND_THRESHOLD;
         uint256 LEND_POOL_SHARE;
-        uint256[2] TIMESTAMP_RANGE;
         uint256 BEND_TOKEN_REWARD_PER_ETH_PER_NFT;
         uint256 MAX_ETH_PAYMENT_PER_NFT;
-    }
-
-    struct AddressConfig {
-        address WETH_GATEWAY;
-        address TREASURY;
-        address BEND_TOKEN;
-        address CRYPTO_PUNKS;
-        address[] ERC721_NFT;
     }
 
     struct ClaimData {
@@ -47,20 +44,11 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         ClaimData[] claimData;
     }
 
-    SystemParameter public SYSTEM_PARAMETER;
-    AddressConfig public ADDRESS_CONFIG;
-
     // nft colelction address => token id => eth payment
     mapping(address => mapping(uint256 => uint256)) public ethPaymentRecord;
     uint256 public ethPaymentTotal;
     uint256 public dividend;
     uint256 public bendClaimed;
-
-    event Activate(
-        address indexed operator,
-        uint256 startTimestamp,
-        uint256 endTimestamp
-    );
 
     event Claimed(
         address indexed addr, // address(0) if eth
@@ -78,15 +66,7 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         uint256 amountToTreasury
     );
 
-    constructor(
-        SystemParameter memory systemParameter,
-        AddressConfig memory addressConfig
-    ) {
-        SYSTEM_PARAMETER = systemParameter;
-        ADDRESS_CONFIG = addressConfig;
-
-        activate();
-    }
+    function getConfig() public view virtual returns (Config memory config) {}
 
     function claim(uint256[] calldata punkIndexes)
         external
@@ -94,22 +74,15 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         whenNotPaused
         nonReentrant
     {
+        Config memory CONFIG = getConfig();
         require(
-            block.timestamp >= SYSTEM_PARAMETER.TIMESTAMP_RANGE[0],
+            block.timestamp >= CONFIG.START_TIMESTAMP,
             "too early to claim, please wait until the competition starts"
         );
 
-        require(
-            block.timestamp <= SYSTEM_PARAMETER.TIMESTAMP_RANGE[1],
-            "too late to claim"
-        );
+        require(block.timestamp <= CONFIG.END_TIMESTAMP, "too late to claim");
 
-        require(
-            ethPaymentTotal < SYSTEM_PARAMETER.TARGET_ETH_PAYMENT,
-            "too late to claim, enough eth payment has been made"
-        );
-
-        uint256 bendBalance = IERC20(ADDRESS_CONFIG.BEND_TOKEN).balanceOf(
+        uint256 bendBalance = IERC20(CONFIG.BEND_TOKEN_ADDRESS).balanceOf(
             address(this)
         );
         require(bendBalance > 0, "insufficient bend balance");
@@ -140,31 +113,32 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
     }
 
     function drawDividend() public {
+        Config memory CONFIG = getConfig();
         if (
-            ADDRESS_CONFIG.WETH_GATEWAY == address(0) ||
-            ADDRESS_CONFIG.TREASURY == address(0)
+            CONFIG.WETH_GATEWAY_ADDRESS == address(0) ||
+            CONFIG.TREASURY_ADDRESS == address(0)
         ) {
             return;
         }
 
-        uint256 amountToPool = (dividend * SYSTEM_PARAMETER.LEND_POOL_SHARE) /
-            100;
+        uint256 amountToPool = (dividend * CONFIG.LEND_POOL_SHARE) / 10000;
         uint256 amountToTreasury = dividend - amountToPool;
         dividend = 0;
 
-        IWETHGateway(ADDRESS_CONFIG.WETH_GATEWAY).depositETH{
+        IWETHGateway(CONFIG.WETH_GATEWAY_ADDRESS).depositETH{
             value: amountToPool
         }(owner(), 0);
-        _safeTransferETH(ADDRESS_CONFIG.TREASURY, amountToTreasury);
+        _safeTransferETH(CONFIG.TREASURY_ADDRESS, amountToTreasury);
 
         emit DrawDividend(msg.sender, amountToPool, amountToTreasury);
     }
 
     function burn() external onlyOwner {
-        uint256 bendBalance = IERC20(ADDRESS_CONFIG.BEND_TOKEN).balanceOf(
+        Config memory CONFIG = getConfig();
+        uint256 bendBalance = IERC20(CONFIG.BEND_TOKEN_ADDRESS).balanceOf(
             msg.sender
         );
-        IERC20(IERC20(ADDRESS_CONFIG.BEND_TOKEN)).transfer(
+        IERC20(IERC20(CONFIG.BEND_TOKEN_ADDRESS)).transfer(
             address(0),
             bendBalance
         );
@@ -180,19 +154,7 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         _unpause();
     }
 
-    function activate() public onlyOwner {
-        require(
-            SYSTEM_PARAMETER.TIMESTAMP_RANGE[0] <
-                SYSTEM_PARAMETER.TIMESTAMP_RANGE[1],
-            "start timestamp should be less than end timestamp"
-        );
-
-        emit Activate(
-            msg.sender,
-            SYSTEM_PARAMETER.TIMESTAMP_RANGE[0],
-            SYSTEM_PARAMETER.TIMESTAMP_RANGE[1]
-        );
-    }
+    function activate() public onlyOwner {}
 
     function emergencyTokenTransfer(
         address token,
@@ -214,16 +176,16 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         view
         returns (UIData memory data)
     {
-        data.startTimestamp = SYSTEM_PARAMETER.TIMESTAMP_RANGE[0];
-        data.endTimestamp = SYSTEM_PARAMETER.TIMESTAMP_RANGE[1];
+        Config memory CONFIG = getConfig();
+        data.startTimestamp = CONFIG.START_TIMESTAMP;
+        data.endTimestamp = CONFIG.END_TIMESTAMP;
         data.remainDivident = dividend;
         data.bendClaimed = bendClaimed;
-        data.bendBalance = IERC20(ADDRESS_CONFIG.BEND_TOKEN).balanceOf(
+        data.bendBalance = IERC20(CONFIG.BEND_TOKEN_ADDRESS).balanceOf(
             address(this)
         );
         data.bendPrice =
-            ((1 * 10**18) /
-                SYSTEM_PARAMETER.BEND_TOKEN_REWARD_PER_ETH_PER_NFT) *
+            ((1 * 10**18) / CONFIG.BEND_TOKEN_REWARD_PER_ETH_PER_NFT) *
             10**18;
 
         ClaimData[] memory datas = _getClaimData(
@@ -246,58 +208,58 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         return data;
     }
 
+    function _getNFTBalance(
+        Config memory CONFIG,
+        uint256[] calldata punkIndexes
+    ) private view returns (uint256 balance) {
+        balance = punkIndexes.length;
+
+        for (
+            uint256 collectionIndex = 0;
+            collectionIndex < CONFIG.ERC721_NFT_ADDRESSES.length;
+            collectionIndex++
+        ) {
+            address nft = CONFIG.ERC721_NFT_ADDRESSES[collectionIndex];
+
+            balance += IERC721Enumerable(nft).balanceOf(msg.sender);
+        }
+
+        return balance;
+    }
+
     function _getClaimData(uint256 ethBalance, uint256[] calldata punkIndexes)
         internal
         view
         returns (ClaimData[] memory data)
     {
+        Config memory CONFIG = getConfig();
         if (
-            block.timestamp < SYSTEM_PARAMETER.TIMESTAMP_RANGE[0] ||
-            block.timestamp > SYSTEM_PARAMETER.TIMESTAMP_RANGE[1] ||
-            ethPaymentTotal >= SYSTEM_PARAMETER.TARGET_ETH_PAYMENT
+            block.timestamp < CONFIG.START_TIMESTAMP ||
+            block.timestamp > CONFIG.END_TIMESTAMP
         ) {
             return data;
         }
 
-        uint256 bendBalance = IERC20(ADDRESS_CONFIG.BEND_TOKEN).balanceOf(
+        uint256 bendBalance = IERC20(CONFIG.BEND_TOKEN_ADDRESS).balanceOf(
             address(this)
         );
         if (bendBalance <= 0) {
             return data;
         }
 
-        if (
-            ethBalance > SYSTEM_PARAMETER.TARGET_ETH_PAYMENT - ethPaymentTotal
-        ) {
-            ethBalance = SYSTEM_PARAMETER.TARGET_ETH_PAYMENT - ethPaymentTotal;
-        }
-
-        uint256 nftBalance = punkIndexes.length;
-
-        for (
-            uint256 collectionIndex = 0;
-            collectionIndex < ADDRESS_CONFIG.ERC721_NFT.length &&
-                bendBalance > 0 &&
-                ethBalance > 0;
-            collectionIndex++
-        ) {
-            address nft = ADDRESS_CONFIG.ERC721_NFT[collectionIndex];
-
-            uint256 balance = IERC721Enumerable(nft).balanceOf(msg.sender);
-            nftBalance += balance;
-        }
-
         uint256 arrayIndex = 0;
-        ClaimData[] memory array = new ClaimData[](nftBalance);
+        ClaimData[] memory array = new ClaimData[](
+            _getNFTBalance(CONFIG, punkIndexes)
+        );
 
         for (
             uint256 collectionIndex = 0;
-            collectionIndex < ADDRESS_CONFIG.ERC721_NFT.length &&
+            collectionIndex < CONFIG.ERC721_NFT_ADDRESSES.length &&
                 bendBalance > 0 &&
                 ethBalance > 0;
             collectionIndex++
         ) {
-            address nft = ADDRESS_CONFIG.ERC721_NFT[collectionIndex];
+            address nft = CONFIG.ERC721_NFT_ADDRESSES[collectionIndex];
 
             uint256 balance = IERC721Enumerable(nft).balanceOf(msg.sender);
             for (uint256 i = 0; i < balance && bendBalance > 0; i++) {
@@ -308,17 +270,16 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
 
                 if (
                     ethPaymentRecord[nft][tokenId] <
-                    SYSTEM_PARAMETER.MAX_ETH_PAYMENT_PER_NFT
+                    CONFIG.MAX_ETH_PAYMENT_PER_NFT
                 ) {
-                    uint256 payment = SYSTEM_PARAMETER.MAX_ETH_PAYMENT_PER_NFT -
+                    uint256 payment = CONFIG.MAX_ETH_PAYMENT_PER_NFT -
                         ethPaymentRecord[nft][tokenId];
                     if (payment > ethBalance) {
                         payment = ethBalance;
                     }
 
                     uint256 reward = (payment *
-                        SYSTEM_PARAMETER.BEND_TOKEN_REWARD_PER_ETH_PER_NFT) /
-                        10**18;
+                        CONFIG.BEND_TOKEN_REWARD_PER_ETH_PER_NFT) / 10**18;
 
                     if (reward > bendBalance) {
                         reward = bendBalance;
@@ -339,24 +300,23 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
 
         for (uint256 i = 0; i < punkIndexes.length && bendBalance > 0; i++) {
             uint256 punkIndex = punkIndexes[i];
-            address owner = ICryptoPunks(ADDRESS_CONFIG.CRYPTO_PUNKS)
+            address owner = ICryptoPunks(CONFIG.CRYPTO_PUNKS_ADDRESS)
                 .punkIndexToAddress(punkIndex);
 
             require(owner == msg.sender, "you are not the owner of punk");
 
             if (
-                ethPaymentRecord[ADDRESS_CONFIG.CRYPTO_PUNKS][punkIndex] <
-                SYSTEM_PARAMETER.MAX_ETH_PAYMENT_PER_NFT
+                ethPaymentRecord[CONFIG.CRYPTO_PUNKS_ADDRESS][punkIndex] <
+                CONFIG.MAX_ETH_PAYMENT_PER_NFT
             ) {
-                uint256 payment = SYSTEM_PARAMETER.MAX_ETH_PAYMENT_PER_NFT -
-                    ethPaymentRecord[ADDRESS_CONFIG.CRYPTO_PUNKS][punkIndex];
+                uint256 payment = CONFIG.MAX_ETH_PAYMENT_PER_NFT -
+                    ethPaymentRecord[CONFIG.CRYPTO_PUNKS_ADDRESS][punkIndex];
                 if (payment > ethBalance) {
                     payment = ethBalance;
                 }
 
                 uint256 reward = (payment *
-                    SYSTEM_PARAMETER.BEND_TOKEN_REWARD_PER_ETH_PER_NFT) /
-                    10**18;
+                    CONFIG.BEND_TOKEN_REWARD_PER_ETH_PER_NFT) / 10**18;
 
                 if (reward > bendBalance) {
                     reward = bendBalance;
@@ -366,7 +326,7 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
                 bendBalance -= reward;
 
                 array[arrayIndex++] = ClaimData(
-                    ADDRESS_CONFIG.CRYPTO_PUNKS,
+                    CONFIG.CRYPTO_PUNKS_ADDRESS,
                     punkIndex,
                     payment,
                     reward
@@ -387,7 +347,8 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
     }
 
     function _claimBendWithETH(uint256 payment, uint256 reward) internal {
-        IERC20(ADDRESS_CONFIG.BEND_TOKEN).transfer(msg.sender, reward);
+        Config memory CONFIG = getConfig();
+        IERC20(CONFIG.BEND_TOKEN_ADDRESS).transfer(msg.sender, reward);
 
         uint256 ethRemain = msg.value - payment;
         if (ethRemain > 0) {
@@ -397,7 +358,7 @@ contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         ethPaymentTotal += payment;
         dividend += payment;
         bendClaimed += reward;
-        if (dividend > SYSTEM_PARAMETER.AUTO_DRAW_DIVIDEND_THRESHOLD) {
+        if (dividend > CONFIG.AUTO_DRAW_DIVIDEND_THRESHOLD) {
             drawDividend();
         }
     }
