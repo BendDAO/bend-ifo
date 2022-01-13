@@ -95,6 +95,10 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         for (uint256 i = 0; i < datas.length; i++) {
             ClaimData memory data = datas[i];
 
+            if (data.ethPayment == 0) {
+                continue;
+            }
+
             ethPayment += data.ethPayment;
             bendReward += data.bendReward;
 
