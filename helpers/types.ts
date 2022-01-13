@@ -7,10 +7,11 @@ export interface SymbolMap<T> {
 export type eNetwork = eEthereumNetwork;
 
 export enum eEthereumNetwork {
-  rinkeby = 'rinkeby',
-  main = 'main',
   coverage = 'coverage',
   hardhat = 'hardhat',
+  localhost = 'localhost',
+  rinkeby = 'rinkeby',
+  main = 'main',
 }
 
 export enum eContractid {
@@ -23,3 +24,13 @@ export enum eContractid {
 }
 
 export type tEthereumAddress = string;
+export interface iEthereumParamsPerNetwork<T> {
+  [eEthereumNetwork.coverage]: T;
+  [eEthereumNetwork.hardhat]: T;
+  [eEthereumNetwork.localhost]: T;
+  [eEthereumNetwork.rinkeby]: T;
+  [eEthereumNetwork.main]: T;
+  [network: string]: T;
+}
+
+export type iParamsPerNetwork<T> = iEthereumParamsPerNetwork<T>;

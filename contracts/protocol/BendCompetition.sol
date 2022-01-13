@@ -154,8 +154,6 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         _unpause();
     }
 
-    function activate() public onlyOwner {}
-
     function emergencyTokenTransfer(
         address token,
         address to,
