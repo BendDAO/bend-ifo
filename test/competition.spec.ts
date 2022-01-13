@@ -89,6 +89,42 @@ describe('Competition', async () => {
     expect(secondSignerBalane.toString()).to.equal(oneBend.div(2).toFixed(0));
   });
 
+  it("should revert when claim others' crypto punks", async () => {
+    const [firstSigner, secondSigner] = await getEthersSigners();
+
+    const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
+    const cryptoPunksMarket = await deployCryptoPunksMarket([]);
+    await waitForTx(await cryptoPunksMarket.allInitialOwnersAssigned());
+
+    const bendCompetition = await deployBendCompetitionTest([
+      {
+        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
+        TREASURY_ADDRESS: ZERO_ADDRESS,
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        CRYPTO_PUNKS_ADDRESS: cryptoPunksMarket.address,
+        ERC721_NFT_ADDRESSES: [],
+
+        START_TIMESTAMP: 0,
+        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
+        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
+        LEND_POOL_SHARE: 8000,
+        BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(4).toFixed(0),
+        MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
+      },
+    ]);
+
+    await waitForTx(await bendToken.mint(oneBend.toFixed(0)));
+    await waitForTx(
+      await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
+    );
+
+    await expect(
+      bendCompetition.connect(secondSigner).claim([1], {
+        value: oneETH.toFixed(0),
+      })
+    ).to.be.revertedWith('you are not the owner of punk');
+  });
+
   it('should claim crypto punks', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
