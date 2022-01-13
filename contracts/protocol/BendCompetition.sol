@@ -230,6 +230,10 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         view
         returns (ClaimData[] memory data)
     {
+        if (msg.sender == address(0)) {
+            return data;
+        }
+
         Config memory CONFIG = getConfig();
         if (
             block.timestamp < CONFIG.START_TIMESTAMP ||
