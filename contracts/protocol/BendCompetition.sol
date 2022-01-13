@@ -268,7 +268,11 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
             address nft = CONFIG.ERC721_NFT_ADDRESSES[collectionIndex];
 
             uint256 balance = IERC721Enumerable(nft).balanceOf(msg.sender);
-            for (uint256 i = 0; i < balance && bendBalance > 0; i++) {
+            for (
+                uint256 i = 0;
+                i < balance && bendBalance > 0 && ethBalance > 0;
+                i++
+            ) {
                 uint256 tokenId = IERC721Enumerable(nft).tokenOfOwnerByIndex(
                     msg.sender,
                     i
@@ -304,7 +308,11 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
             }
         }
 
-        for (uint256 i = 0; i < punkIndexes.length && bendBalance > 0; i++) {
+        for (
+            uint256 i = 0;
+            i < punkIndexes.length && bendBalance > 0 && ethBalance > 0;
+            i++
+        ) {
             uint256 punkIndex = punkIndexes[i];
             address owner = ICryptoPunks(CONFIG.CRYPTO_PUNKS_ADDRESS)
                 .punkIndexToAddress(punkIndex);
