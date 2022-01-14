@@ -58,8 +58,6 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         uint256 bendReward
     );
 
-    event Burned(address indexed operator);
-
     event DrawDividend(
         address indexed operator,
         uint256 amountToPool,
@@ -135,19 +133,6 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         _safeTransferETH(CONFIG.TREASURY_ADDRESS, amountToTreasury);
 
         emit DrawDividend(msg.sender, amountToPool, amountToTreasury);
-    }
-
-    function burn() external onlyOwner {
-        Config memory CONFIG = getConfig();
-        uint256 bendBalance = IERC20(CONFIG.BEND_TOKEN_ADDRESS).balanceOf(
-            msg.sender
-        );
-        IERC20(IERC20(CONFIG.BEND_TOKEN_ADDRESS)).transfer(
-            address(0),
-            bendBalance
-        );
-
-        emit Burned(msg.sender);
     }
 
     function pause() external onlyOwner {
