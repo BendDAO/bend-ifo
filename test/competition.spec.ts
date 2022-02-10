@@ -24,6 +24,13 @@ import {
 import { expect } from 'chai';
 import { ZERO_ADDRESS } from '../helpers/constants';
 
+enum Stage {
+  Prepare,
+  PrivateSale,
+  PublicSale,
+  Finish,
+}
+
 describe('Competition', async () => {
   const oneBend = new BigNumber(1).shiftedBy(18);
   const oneETH = new BigNumber(1).shiftedBy(18);
@@ -37,115 +44,43 @@ describe('Competition', async () => {
     await rawBRE.run('set-DRE');
   });
 
-  it('should claim with erc721', async () => {
+  it('should not cliam in Prepare stage', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
-    const erc721Token = await deployMintableERC721(['ERC721 Token', 'NFT']);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
         WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
         TREASURY_ADDRESS: ZERO_ADDRESS,
         BEND_TOKEN_ADDRESS: bendToken.address,
-        CRYPTO_PUNKS_ADDRESS: ZERO_ADDRESS,
-        ERC721_NFT_ADDRESSES: [erc721Token.address],
-
-        START_TIMESTAMP: 0,
-        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
         LEND_POOL_SHARE: 8000,
-        BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(2).toFixed(0),
-        MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
+        BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
+        MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
       },
     ]);
 
-    await waitForTx(await bendToken.mint(oneBend.toFixed(0)));
-    await waitForTx(
-      await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
-    );
-
-    let [competitionBalance, secondSignerBalane] = await Promise.all([
-      bendToken.balanceOf(bendCompetition.address),
-      bendToken.balanceOf(await secondSigner.getAddress()),
-    ]);
-    expect(competitionBalance.toString()).to.equal(oneBend.toFixed(0));
-    expect(secondSignerBalane.toString()).to.equal('0');
-
-    await waitForTx(await erc721Token.connect(secondSigner).mint(1));
-
-    await waitForTx(
-      await bendCompetition.connect(secondSigner).claim([], {
-        value: oneETH.toFixed(0),
-      })
-    );
-
-    [competitionBalance, secondSignerBalane] = await Promise.all([
-      bendToken.balanceOf(bendCompetition.address),
-      bendToken.balanceOf(await secondSigner.getAddress()),
-    ]);
-
-    expect(competitionBalance.toString()).to.equal(oneBend.div(2).toFixed(0));
-    expect(secondSignerBalane.toString()).to.equal(oneBend.div(2).toFixed(0));
-  });
-
-  it("should revert when claim others' crypto punks", async () => {
-    const [firstSigner, secondSigner] = await getEthersSigners();
-
-    const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
-    const cryptoPunksMarket = await deployCryptoPunksMarket([]);
-    await waitForTx(await cryptoPunksMarket.allInitialOwnersAssigned());
-
-    const bendCompetition = await deployBendCompetitionTest([
-      {
-        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
-        TREASURY_ADDRESS: ZERO_ADDRESS,
-        BEND_TOKEN_ADDRESS: bendToken.address,
-        CRYPTO_PUNKS_ADDRESS: cryptoPunksMarket.address,
-        ERC721_NFT_ADDRESSES: [],
-
-        START_TIMESTAMP: 0,
-        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
-        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 8000,
-        BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(4).toFixed(0),
-        MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
-      },
-    ]);
-
-    await waitForTx(await bendToken.mint(oneBend.toFixed(0)));
-    await waitForTx(
-      await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
-    );
-
+    expect(await bendCompetition.stage()).to.be.eq(Stage.Prepare);
     await expect(
-      bendCompetition.connect(secondSigner).claim([1], {
-        value: oneETH.toFixed(0),
-      })
-    ).to.be.revertedWith('you are not the owner of punk');
+      bendCompetition.connect(secondSigner).claim({})
+    ).to.be.revertedWith('not in the right stage or not in the whitelist');
   });
 
-  it('should claim crypto punks', async () => {
+  it('only whitelist can claim in PrivateSale stage', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
-    const cryptoPunksMarket = await deployCryptoPunksMarket([]);
-    await waitForTx(await cryptoPunksMarket.allInitialOwnersAssigned());
 
     const bendCompetition = await deployBendCompetitionTest([
       {
         WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
         TREASURY_ADDRESS: ZERO_ADDRESS,
         BEND_TOKEN_ADDRESS: bendToken.address,
-        CRYPTO_PUNKS_ADDRESS: cryptoPunksMarket.address,
-        ERC721_NFT_ADDRESSES: [],
-
-        START_TIMESTAMP: 0,
-        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
         LEND_POOL_SHARE: 8000,
-        BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(4).toFixed(0),
-        MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
+        BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
+        MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
       },
     ]);
 
@@ -154,52 +89,56 @@ describe('Competition', async () => {
       await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
     );
 
-    let [competitionBalance, secondSignerBalane] = await Promise.all([
-      bendToken.balanceOf(bendCompetition.address),
-      bendToken.balanceOf(await secondSigner.getAddress()),
-    ]);
-    expect(competitionBalance.toString()).to.equal(oneBend.toFixed(0));
-    expect(secondSignerBalane.toString()).to.equal('0');
-
-    await waitForTx(await cryptoPunksMarket.connect(secondSigner).getPunk(1));
-    await waitForTx(await cryptoPunksMarket.connect(secondSigner).getPunk(2));
+    await waitForTx(await bendCompetition.nextStage());
+    expect(await bendCompetition.stage()).to.be.eq(Stage.PrivateSale);
+    await expect(
+      bendCompetition.connect(secondSigner).claim({})
+    ).to.be.revertedWith('not in the right stage or not in the whitelist');
 
     await waitForTx(
-      await bendCompetition.connect(secondSigner).claim([1, 2], {
-        value: oneETH.multipliedBy(2).toFixed(0),
-      })
+      await bendCompetition.addToWhitelist([await secondSigner.getAddress()])
     );
 
-    [competitionBalance, secondSignerBalane] = await Promise.all([
-      bendToken.balanceOf(bendCompetition.address),
-      bendToken.balanceOf(await secondSigner.getAddress()),
-    ]);
-    expect(competitionBalance.toString()).to.equal(oneBend.div(2).toFixed(0));
-    expect(secondSignerBalane.toString()).to.equal(oneBend.div(2).toFixed(0));
+    await expect(() =>
+      bendCompetition
+        .connect(secondSigner)
+        .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
+    ).to.changeEtherBalances(
+      [bendCompetition, secondSigner],
+      [
+        oneETH.multipliedBy(0.1).toFixed(0),
+        oneETH.multipliedBy(-0.1).toFixed(0),
+      ]
+    );
+
+    await expect(() =>
+      bendCompetition
+        .connect(secondSigner)
+        .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
+    ).to.changeTokenBalances(
+      bendToken,
+      [bendCompetition, secondSigner],
+      [
+        oneETH.multipliedBy(-0.05).toFixed(0),
+        oneETH.multipliedBy(0.05).toFixed(0),
+      ]
+    );
   });
 
-  it('should claim both erc721 and crypto punks', async () => {
+  it('everyone can claim in PublicSale stage', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
-    const erc721Token = await deployMintableERC721(['ERC721 Token', 'NFT']);
-    const cryptoPunksMarket = await deployCryptoPunksMarket([]);
-    await waitForTx(await cryptoPunksMarket.allInitialOwnersAssigned());
 
     const bendCompetition = await deployBendCompetitionTest([
       {
         WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
         TREASURY_ADDRESS: ZERO_ADDRESS,
         BEND_TOKEN_ADDRESS: bendToken.address,
-        CRYPTO_PUNKS_ADDRESS: cryptoPunksMarket.address,
-        ERC721_NFT_ADDRESSES: [erc721Token.address],
-
-        START_TIMESTAMP: 0,
-        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
         LEND_POOL_SHARE: 8000,
-        BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(4).toFixed(0),
-        MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
+        BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
+        MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
       },
     ]);
 
@@ -208,32 +147,132 @@ describe('Competition', async () => {
       await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
     );
 
-    let [competitionBalance, secondSignerBalane] = await Promise.all([
-      bendToken.balanceOf(bendCompetition.address),
-      bendToken.balanceOf(await secondSigner.getAddress()),
+    await waitForTx(await bendCompetition.nextStage());
+    await waitForTx(await bendCompetition.nextStage());
+    expect(await bendCompetition.stage()).to.be.eq(Stage.PublicSale);
+
+    await expect(() =>
+      bendCompetition
+        .connect(secondSigner)
+        .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
+    ).to.changeEtherBalances(
+      [bendCompetition, secondSigner],
+      [
+        oneETH.multipliedBy(0.1).toFixed(0),
+        oneETH.multipliedBy(-0.1).toFixed(0),
+      ]
+    );
+
+    await expect(() =>
+      bendCompetition
+        .connect(secondSigner)
+        .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
+    ).to.changeTokenBalances(
+      bendToken,
+      [bendCompetition, secondSigner],
+      [
+        oneETH.multipliedBy(-0.05).toFixed(0),
+        oneETH.multipliedBy(0.05).toFixed(0),
+      ]
+    );
+  });
+
+  it('should not cliam in Finish stage', async () => {
+    const [firstSigner, secondSigner] = await getEthersSigners();
+
+    const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
+
+    const bendCompetition = await deployBendCompetitionTest([
+      {
+        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
+        TREASURY_ADDRESS: ZERO_ADDRESS,
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
+        LEND_POOL_SHARE: 8000,
+        BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
+        MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
+      },
     ]);
-    expect(competitionBalance.toString()).to.equal(oneBend.toFixed(0));
-    expect(secondSignerBalane.toString()).to.equal('0');
+    await waitForTx(await bendCompetition.nextStage());
+    await waitForTx(await bendCompetition.nextStage());
+    await waitForTx(await bendCompetition.nextStage());
+    expect(await bendCompetition.stage()).to.be.eq(Stage.Finish);
+    await expect(
+      bendCompetition.connect(secondSigner).claim({})
+    ).to.be.revertedWith('not in the right stage or not in the whitelist');
+  });
 
-    await waitForTx(await cryptoPunksMarket.connect(secondSigner).getPunk(1));
-    await waitForTx(await cryptoPunksMarket.connect(secondSigner).getPunk(2));
+  it('should claim only MAX_ETH_PAYMENT_PER_ADDR', async () => {
+    const [firstSigner, secondSigner] = await getEthersSigners();
 
-    await waitForTx(await erc721Token.connect(secondSigner).mint(1));
+    const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
+
+    const bendCompetition = await deployBendCompetitionTest([
+      {
+        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
+        TREASURY_ADDRESS: ZERO_ADDRESS,
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
+        LEND_POOL_SHARE: 8000,
+        BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
+        MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
+      },
+    ]);
+
+    await waitForTx(await bendToken.mint(oneBend.toFixed(0)));
     await waitForTx(
-      await bendCompetition.connect(secondSigner).claim([1, 2], {
-        value: oneETH.multipliedBy(3).toFixed(0),
-      })
+      await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
     );
 
-    [competitionBalance, secondSignerBalane] = await Promise.all([
-      bendToken.balanceOf(bendCompetition.address),
-      bendToken.balanceOf(await secondSigner.getAddress()),
-    ]);
-    expect(competitionBalance.toString()).to.equal(
-      oneBend.div(4).multipliedBy(1).toFixed(0)
+    await waitForTx(await bendCompetition.nextStage());
+    await waitForTx(await bendCompetition.nextStage());
+
+    await expect(() =>
+      bendCompetition
+        .connect(secondSigner)
+        .claim({ value: oneETH.multipliedBy(10).toFixed(0) })
+    ).to.changeEtherBalances(
+      [bendCompetition, secondSigner],
+      [oneETH.multipliedBy(1).toFixed(0), oneETH.multipliedBy(-1).toFixed(0)]
     );
-    expect(secondSignerBalane.toString()).to.equal(
-      oneBend.div(4).multipliedBy(3).toFixed(0)
+  });
+
+  it('should reward only MAX_ETH_PAYMENT_PER_ADDR * BEND_TOKEN_REWARD_PER_ETH', async () => {
+    const [firstSigner, secondSigner] = await getEthersSigners();
+
+    const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
+
+    const bendCompetition = await deployBendCompetitionTest([
+      {
+        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
+        TREASURY_ADDRESS: ZERO_ADDRESS,
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
+        LEND_POOL_SHARE: 8000,
+        BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
+        MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
+      },
+    ]);
+
+    await waitForTx(await bendToken.mint(oneBend.toFixed(0)));
+    await waitForTx(
+      await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
+    );
+
+    await waitForTx(await bendCompetition.nextStage());
+    await waitForTx(await bendCompetition.nextStage());
+
+    await expect(() =>
+      bendCompetition
+        .connect(secondSigner)
+        .claim({ value: oneETH.multipliedBy(10).toFixed(0) })
+    ).to.changeTokenBalances(
+      bendToken,
+      [bendCompetition, secondSigner],
+      [
+        oneETH.multipliedBy(-0.5).toFixed(0),
+        oneETH.multipliedBy(0.5).toFixed(0),
+      ]
     );
   });
 
@@ -241,7 +280,6 @@ describe('Competition', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
-    const erc721Token = await deployMintableERC721(['ERC721 Token', 'NFT']);
     const wethGateway = await deployWETHGateway([]);
     const treasury = await deployTreasury([]);
 
@@ -250,15 +288,10 @@ describe('Competition', async () => {
         WETH_GATEWAY_ADDRESS: wethGateway.address,
         TREASURY_ADDRESS: treasury.address,
         BEND_TOKEN_ADDRESS: bendToken.address,
-        CRYPTO_PUNKS_ADDRESS: ZERO_ADDRESS,
-        ERC721_NFT_ADDRESSES: [erc721Token.address],
-
-        START_TIMESTAMP: 0,
-        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
         LEND_POOL_SHARE: 8000,
-        BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(2).toFixed(0),
-        MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
+        BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
+        MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
       },
     ]);
 
@@ -267,57 +300,33 @@ describe('Competition', async () => {
       await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
     );
 
-    let [competitionBalance, secondSignerBalane, ethPaymentTotal, dividend] =
-      await Promise.all([
-        bendToken.balanceOf(bendCompetition.address),
-        bendToken.balanceOf(await secondSigner.getAddress()),
-        bendCompetition.ethPaymentTotal(),
-        bendCompetition.dividend(),
-      ]);
-    expect(competitionBalance.toString()).to.equal(oneBend.toFixed(0));
-    expect(secondSignerBalane.toString()).to.equal('0');
-    expect(ethPaymentTotal.toString()).to.equal('0');
-    expect(dividend.toString()).to.equal('0');
+    await waitForTx(await bendCompetition.nextStage());
+    await waitForTx(await bendCompetition.nextStage());
+    expect(await bendCompetition.stage()).to.be.eq(Stage.PublicSale);
 
-    await waitForTx(await erc721Token.connect(secondSigner).mint(1));
-
+    expect(await bendCompetition.remainDivident()).to.be.eq(
+      oneETH.multipliedBy(0).toFixed(0)
+    );
     await waitForTx(
-      await bendCompetition.connect(secondSigner).claim([], {
-        value: oneETH.toFixed(0),
-      })
+      await bendCompetition
+        .connect(secondSigner)
+        .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
+    );
+    expect(await bendCompetition.remainDivident()).to.be.eq(
+      oneETH.multipliedBy(0.1).toFixed(0)
     );
 
-    [competitionBalance, secondSignerBalane, ethPaymentTotal, dividend] =
-      await Promise.all([
-        bendToken.balanceOf(bendCompetition.address),
-        bendToken.balanceOf(await secondSigner.getAddress()),
-        bendCompetition.ethPaymentTotal(),
-        bendCompetition.dividend(),
-      ]);
-
-    expect(competitionBalance.toString()).to.equal(oneBend.div(2).toFixed(0));
-    expect(secondSignerBalane.toString()).to.equal(oneBend.div(2).toFixed(0));
-    expect(ethPaymentTotal.toString()).to.equal(oneETH.toFixed(0));
-    expect(dividend.toString()).to.equal(oneETH.toFixed(0));
-
-    await waitForTx(await bendCompetition.drawDividend());
-    [ethPaymentTotal, dividend] = await Promise.all([
-      bendCompetition.ethPaymentTotal(),
-      bendCompetition.dividend(),
-    ]);
-
-    const [poolBalance, treasuryBalance] = await Promise.all([
-      wethGateway.balanceOf(await firstSigner.getAddress()),
-      treasury.balance(),
-    ]);
-
-    expect(ethPaymentTotal.toString()).to.equal(oneETH.toFixed(0));
-    expect(dividend.toString()).to.equal('0');
-    expect(poolBalance.toString()).to.equal(
-      oneETH.multipliedBy(0.8).toFixed(0)
+    await expect(() => bendCompetition.drawDividend()).to.changeEtherBalances(
+      [bendCompetition, wethGateway, treasury],
+      [
+        oneETH.multipliedBy(-0.1).toFixed(0),
+        oneETH.multipliedBy(0.08).toFixed(0),
+        oneETH.multipliedBy(0.02).toFixed(0),
+      ]
     );
-    expect(treasuryBalance.toString()).to.equal(
-      oneETH.multipliedBy(0.2).toFixed(0)
+
+    expect(await bendCompetition.remainDivident()).to.be.eq(
+      oneETH.multipliedBy(0).toFixed(0)
     );
   });
 
@@ -325,7 +334,6 @@ describe('Competition', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
-    const erc721Token = await deployMintableERC721(['ERC721 Token', 'NFT']);
     const wethGateway = await deployWETHGateway([]);
     const treasury = await deployTreasury([]);
 
@@ -334,15 +342,10 @@ describe('Competition', async () => {
         WETH_GATEWAY_ADDRESS: wethGateway.address,
         TREASURY_ADDRESS: treasury.address,
         BEND_TOKEN_ADDRESS: bendToken.address,
-        CRYPTO_PUNKS_ADDRESS: ZERO_ADDRESS,
-        ERC721_NFT_ADDRESSES: [erc721Token.address],
-
-        START_TIMESTAMP: 0,
-        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
-        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
+        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(5).toFixed(0),
         LEND_POOL_SHARE: 8000,
-        BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(1000).toFixed(0),
-        MAX_ETH_PAYMENT_PER_NFT: oneETH.multipliedBy(1000).toFixed(0),
+        BEND_TOKEN_REWARD_PER_ETH: oneBend.multipliedBy(0.001).toFixed(0),
+        MAX_ETH_PAYMENT_PER_ADDR: oneETH.multipliedBy(1000).toFixed(0),
       },
     ]);
 
@@ -351,176 +354,51 @@ describe('Competition', async () => {
       await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
     );
 
-    let [ethPaymentTotal, dividend] = await Promise.all([
-      bendCompetition.ethPaymentTotal(),
-      bendCompetition.dividend(),
-    ]);
-    expect(ethPaymentTotal.toString()).to.equal('0');
-    expect(dividend.toString()).to.equal('0');
+    await waitForTx(await bendCompetition.nextStage());
+    await waitForTx(await bendCompetition.nextStage());
+    expect(await bendCompetition.stage()).to.be.eq(Stage.PublicSale);
 
-    await waitForTx(await erc721Token.connect(secondSigner).mint(1));
-
+    expect(await bendCompetition.remainDivident()).to.be.eq(
+      oneETH.multipliedBy(0).toFixed(0)
+    );
     await waitForTx(
-      await bendCompetition.connect(secondSigner).claim([], {
-        value: oneETH.toFixed(0),
-      })
+      await bendCompetition
+        .connect(secondSigner)
+        .claim({ value: oneETH.multipliedBy(1).toFixed(0) })
+    );
+    expect(await bendCompetition.remainDivident()).to.be.eq(
+      oneETH.multipliedBy(1).toFixed(0)
     );
 
-    [ethPaymentTotal, dividend] = await Promise.all([
-      bendCompetition.ethPaymentTotal(),
-      bendCompetition.dividend(),
-    ]);
-
-    expect(ethPaymentTotal.toString()).to.equal(oneETH.toFixed(0));
-    expect(dividend.toString()).to.equal(oneETH.toFixed(0));
-
-    let [poolBalance, treasuryBalance] = await Promise.all([
-      wethGateway.balanceOf(await firstSigner.getAddress()),
-      treasury.balance(),
-    ]);
-
-    expect(poolBalance.toString()).to.equal('0');
-    expect(treasuryBalance.toString()).to.equal('0');
-
-    await waitForTx(
-      await bendCompetition.connect(secondSigner).claim([], {
-        value: oneETH.multipliedBy(100).toFixed(0),
-      })
+    await expect(() =>
+      bendCompetition
+        .connect(secondSigner)
+        .claim({ value: oneETH.multipliedBy(4).toFixed(0) })
+    ).to.changeEtherBalances(
+      [secondSigner, bendCompetition, wethGateway, treasury],
+      [
+        oneETH.multipliedBy(-4).toFixed(0),
+        oneETH.multipliedBy(-1).toFixed(0),
+        oneETH.multipliedBy(4).toFixed(0),
+        oneETH.multipliedBy(1).toFixed(0),
+      ]
     );
-
-    [ethPaymentTotal, dividend] = await Promise.all([
-      bendCompetition.ethPaymentTotal(),
-      bendCompetition.dividend(),
-    ]);
-
-    expect(ethPaymentTotal.toString()).to.equal(
-      oneETH.multipliedBy(101).toFixed(0)
-    );
-    expect(dividend.toString()).to.equal('0');
-
-    [poolBalance, treasuryBalance] = await Promise.all([
-      wethGateway.balanceOf(await firstSigner.getAddress()),
-      treasury.balance(),
-    ]);
-
-    expect(poolBalance.toString()).to.equal(
-      oneETH.multipliedBy(101).multipliedBy(0.8).toFixed(0)
-    );
-    expect(treasuryBalance.toString()).to.equal(
-      oneETH.multipliedBy(101).multipliedBy(0.2).toFixed(0)
-    );
-  });
-
-  it('should participate after start', async () => {
-    const [firstSigner, secondSigner] = await getEthersSigners();
-    const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
-    const erc721Token = await deployMintableERC721(['ERC721 Token', 'NFT']);
-
-    const bendCompetition = await deployBendCompetitionTest([
-      {
-        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
-        TREASURY_ADDRESS: ZERO_ADDRESS,
-        BEND_TOKEN_ADDRESS: bendToken.address,
-        CRYPTO_PUNKS_ADDRESS: ZERO_ADDRESS,
-        ERC721_NFT_ADDRESSES: [erc721Token.address],
-
-        START_TIMESTAMP: dayjs().add(1, 'day').unix(),
-        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
-        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 8000,
-        BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(2).toFixed(0),
-        MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
-      },
-    ]);
-
-    await waitForTx(await bendToken.mint(oneBend.toFixed(0)));
-    await waitForTx(
-      await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
-    );
-
-    let [competitionBalance, secondSignerBalane] = await Promise.all([
-      bendToken.balanceOf(bendCompetition.address),
-      bendToken.balanceOf(await secondSigner.getAddress()),
-    ]);
-    expect(competitionBalance.toString()).to.equal(oneBend.toFixed(0));
-    expect(secondSignerBalane.toString()).to.equal('0');
-
-    await waitForTx(await erc721Token.connect(secondSigner).mint(1));
-
-    await expect(
-      bendCompetition.connect(secondSigner).claim([], {
-        value: oneETH.toFixed(0),
-      })
-    ).to.be.revertedWith(
-      'too early to claim, please wait until the competition starts'
-    );
-  });
-
-  it('should participate before end', async () => {
-    const [firstSigner, secondSigner] = await getEthersSigners();
-    const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
-    const erc721Token = await deployMintableERC721(['ERC721 Token', 'NFT']);
-
-    const bendCompetition = await deployBendCompetitionTest([
-      {
-        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
-        TREASURY_ADDRESS: ZERO_ADDRESS,
-        BEND_TOKEN_ADDRESS: bendToken.address,
-        CRYPTO_PUNKS_ADDRESS: ZERO_ADDRESS,
-        ERC721_NFT_ADDRESSES: [erc721Token.address],
-
-        START_TIMESTAMP: dayjs().subtract(2, 'day').unix(),
-        END_TIMESTAMP: dayjs().subtract(1, 'day').unix(),
-        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 8000,
-        BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(2).toFixed(0),
-        MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
-      },
-    ]);
-
-    await waitForTx(await bendToken.mint(oneBend.toFixed(0)));
-    await waitForTx(
-      await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
-    );
-
-    let [competitionBalance, secondSignerBalane] = await Promise.all([
-      bendToken.balanceOf(bendCompetition.address),
-      bendToken.balanceOf(await secondSigner.getAddress()),
-    ]);
-    expect(competitionBalance.toString()).to.equal(oneBend.toFixed(0));
-    expect(secondSignerBalane.toString()).to.equal('0');
-
-    await waitForTx(await erc721Token.connect(secondSigner).mint(1));
-
-    await expect(
-      bendCompetition.connect(secondSigner).claim([], {
-        value: oneETH.toFixed(0),
-      })
-    ).to.be.revertedWith('too late to claim');
   });
 
   it('should print ui data', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
-    const erc721Token = await deployMintableERC721(['ERC721 Token', 'NFT']);
-    const cryptoPunksMarket = await deployCryptoPunksMarket([]);
-    await waitForTx(await cryptoPunksMarket.allInitialOwnersAssigned());
 
     const bendCompetition = await deployBendCompetitionTest([
       {
         WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
         TREASURY_ADDRESS: ZERO_ADDRESS,
         BEND_TOKEN_ADDRESS: bendToken.address,
-        CRYPTO_PUNKS_ADDRESS: cryptoPunksMarket.address,
-        ERC721_NFT_ADDRESSES: [erc721Token.address],
-
-        START_TIMESTAMP: 0,
-        END_TIMESTAMP: dayjs().add(1, 'year').unix(),
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
         LEND_POOL_SHARE: 8000,
-        BEND_TOKEN_REWARD_PER_ETH_PER_NFT: oneBend.div(4).toFixed(0),
-        MAX_ETH_PAYMENT_PER_NFT: oneETH.toFixed(0),
+        BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
+        MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
       },
     ]);
 
@@ -529,109 +407,82 @@ describe('Competition', async () => {
       await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
     );
 
-    let [competitionBalance, secondSignerBalane] = await Promise.all([
-      bendToken.balanceOf(bendCompetition.address),
-      bendToken.balanceOf(await secondSigner.getAddress()),
+    let uiData = await bendCompetition.connect(secondSigner).uiData();
+    expect([
+      uiData.remainDivident.toString(),
+      uiData.bendClaimedTotal.toString(),
+      uiData.bendPrice.toString(),
+      uiData.remainBendBalance.toString(),
+      uiData.stage,
+      uiData.bendBalance.toString(),
+      uiData.maxETHPayment.toString(),
+      uiData.maxBendReward.toString(),
+    ]).to.be.deep.eq([
+      '0',
+      '0',
+      oneETH.multipliedBy(2).toFixed(0),
+      oneBend.toFixed(0),
+      Stage.Prepare,
+      '0',
+      oneETH.toFixed(0),
+      oneBend.div(2).toFixed(0),
     ]);
-    expect(competitionBalance.toString()).to.equal(oneBend.toFixed(0));
-    expect(secondSignerBalane.toString()).to.equal('0');
 
-    await waitForTx(await cryptoPunksMarket.connect(secondSigner).getPunk(1));
-    await waitForTx(await cryptoPunksMarket.connect(secondSigner).getPunk(2));
-
-    await waitForTx(await erc721Token.connect(secondSigner).mint(1));
-
-    let uiData = await bendCompetition.connect(secondSigner).uiData([1, 2]);
-    expect(uiData.remainDivident.toString()).to.equal('0');
-    expect(uiData.bendClaimed.toString()).to.equal('0');
-    expect(uiData.bendBalance.toString()).to.equal(oneBend.toFixed(0));
-    expect(uiData.bendPrice.toString()).to.equal(
-      oneETH.multipliedBy(4).toFixed(0)
-    );
-    expect(uiData.maxETHPayment.toString()).to.equal(
-      oneETH.multipliedBy(3).toFixed(0)
-    );
-    expect(uiData.maxBendReward.toString()).to.equal(
-      oneBend.div(4).multipliedBy(3).toFixed(0)
-    );
-    expect(uiData.claimData.length).to.be.equal(3);
+    await waitForTx(await bendCompetition.nextStage());
+    await waitForTx(await bendCompetition.nextStage());
 
     await waitForTx(
-      await bendCompetition.connect(secondSigner).claim([], {
-        value: oneETH.multipliedBy(0.5).toFixed(0),
-      })
+      await bendCompetition
+        .connect(secondSigner)
+        .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
     );
-    uiData = await bendCompetition.connect(secondSigner).uiData([1, 2]);
-    expect(uiData.remainDivident.toString()).to.equal(
-      oneETH.multipliedBy(0.5).toFixed(0)
-    );
-    expect(uiData.bendClaimed.toString()).to.equal(
-      oneBend.div(4).multipliedBy(0.5).toFixed(0)
-    );
-    expect(uiData.bendBalance.toString()).to.equal(
-      oneBend.multipliedBy(1 - (1 / 4) * 0.5).toFixed(0)
-    );
-    expect(uiData.bendPrice.toString()).to.equal(
-      oneETH.multipliedBy(4).toFixed(0)
-    );
-    expect(uiData.maxETHPayment.toString()).to.equal(
-      oneETH.multipliedBy(2.5).toFixed(0)
-    );
-    expect(uiData.maxBendReward.toString()).to.equal(
-      oneBend.multipliedBy(2.5 * 0.25).toFixed(0)
-    );
-    expect(uiData.claimData.length).to.be.equal(3);
+
+    uiData = await bendCompetition.connect(secondSigner).uiData();
+    expect([
+      uiData.remainDivident.toString(),
+      uiData.bendClaimedTotal.toString(),
+      uiData.bendPrice.toString(),
+      uiData.remainBendBalance.toString(),
+      uiData.stage,
+      uiData.bendBalance.toString(),
+      uiData.maxETHPayment.toString(),
+      uiData.maxBendReward.toString(),
+    ]).to.be.deep.eq([
+      oneETH.multipliedBy(0.1).toFixed(0),
+      oneBend.multipliedBy(0.05).toFixed(0),
+      oneETH.multipliedBy(2).toFixed(0),
+      oneBend.multipliedBy(0.95).toFixed(0),
+      Stage.PublicSale,
+      oneBend.multipliedBy(0.05).toFixed(0),
+      oneETH.multipliedBy(0.9).toFixed(0),
+      oneBend.multipliedBy(0.45).toFixed(0),
+    ]);
 
     await waitForTx(
-      await bendCompetition.connect(secondSigner).claim([], {
-        value: oneETH.multipliedBy(0.5).toFixed(0),
-      })
+      await bendCompetition
+        .connect(secondSigner)
+        .claim({ value: oneETH.multipliedBy(0.9).toFixed(0) })
     );
-    uiData = await bendCompetition.connect(secondSigner).uiData([1, 2]);
-    expect(uiData.remainDivident.toString()).to.equal(
-      oneETH.multipliedBy(1).toFixed(0)
-    );
-    expect(uiData.bendClaimed.toString()).to.equal(
-      oneBend.multipliedBy(0.25).toFixed(0)
-    );
-    expect(uiData.bendBalance.toString()).to.equal(
-      oneBend.multipliedBy(0.75).toFixed(0)
-    );
-    expect(uiData.bendPrice.toString()).to.equal(
-      oneETH.multipliedBy(4).toFixed(0)
-    );
-    expect(uiData.maxETHPayment.toString()).to.equal(
-      oneETH.multipliedBy(2).toFixed(0)
-    );
-    expect(uiData.maxBendReward.toString()).to.equal(
-      oneBend.multipliedBy(2 * 0.25).toFixed(0)
-    );
-    expect(uiData.claimData.length).to.be.equal(2);
 
-    await waitForTx(
-      await bendCompetition.connect(secondSigner).claim([1, 2], {
-        value: oneETH.multipliedBy(0.5).toFixed(0),
-      })
-    );
-    uiData = await bendCompetition.connect(secondSigner).uiData([1, 2]);
-    expect(uiData.remainDivident.toString()).to.equal(
-      oneETH.multipliedBy(1.5).toFixed(0)
-    );
-    expect(uiData.bendClaimed.toString()).to.equal(
-      oneBend.multipliedBy(1.5 * 0.25).toFixed(0)
-    );
-    expect(uiData.bendBalance.toString()).to.equal(
-      oneBend.multipliedBy(1 - 1.5 * 0.25).toFixed(0)
-    );
-    expect(uiData.bendPrice.toString()).to.equal(
-      oneETH.multipliedBy(4).toFixed(0)
-    );
-    expect(uiData.maxETHPayment.toString()).to.equal(
-      oneETH.multipliedBy(1.5).toFixed(0)
-    );
-    expect(uiData.maxBendReward.toString()).to.equal(
-      oneBend.multipliedBy(1.5 * 0.25).toFixed(0)
-    );
-    expect(uiData.claimData.length).to.be.equal(2);
+    uiData = await bendCompetition.connect(secondSigner).uiData();
+    expect([
+      uiData.remainDivident.toString(),
+      uiData.bendClaimedTotal.toString(),
+      uiData.bendPrice.toString(),
+      uiData.remainBendBalance.toString(),
+      uiData.stage,
+      uiData.bendBalance.toString(),
+      uiData.maxETHPayment.toString(),
+      uiData.maxBendReward.toString(),
+    ]).to.be.deep.eq([
+      oneETH.multipliedBy(1).toFixed(0),
+      oneBend.multipliedBy(0.5).toFixed(0),
+      oneETH.multipliedBy(2).toFixed(0),
+      oneBend.multipliedBy(0.5).toFixed(0),
+      Stage.PublicSale,
+      oneBend.multipliedBy(0.5).toFixed(0),
+      oneETH.multipliedBy(0).toFixed(0),
+      oneBend.multipliedBy(0).toFixed(0),
+    ]);
   });
 });
