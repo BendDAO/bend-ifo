@@ -1,7 +1,7 @@
 {
-  "name": "@bend/competition",
+  "name": "@bend/bend-crowdfunding",
   "version": "0.0.1",
-  "description": "bend competition",
+  "description": "bend crowdfunding",
   "files": [
     "contracts",
     "artifacts"
@@ -12,9 +12,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/qlcchain/bend-competition"
+    "url": "https://github.com/BendDAO/bend-crowdfunding"
   },
-  "author": "BEND <dev@bendfinance.org>",
+  "author": "BEND <dev@benddao.xyz>",
   "license": "MIT",
   "dependencies": {
     "@openzeppelin/contracts": "^4.4.0"
