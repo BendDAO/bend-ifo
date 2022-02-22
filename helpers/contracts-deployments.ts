@@ -65,6 +65,7 @@ export const deployBendCompetition = async (
     [eEthereumNetwork.hardhat]: BendCompetitionRinkeby__factory,
     [eEthereumNetwork.main]: null,
     [eEthereumNetwork.rinkeby]: BendCompetitionRinkeby__factory,
+    [eEthereumNetwork.localhost]: null,
   }[network];
 
   if (!factory) {

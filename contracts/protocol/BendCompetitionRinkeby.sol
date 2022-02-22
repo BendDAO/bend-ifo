@@ -39,4 +39,19 @@ contract BendCompetitionRinkeby is BendCompetition {
     {
         return PRIVATE_SALE_WHITELIST[addr];
     }
+
+    function addToWhitelist(address[] calldata addresses) public onlyOwner {
+        for (uint256 i = 0; i < addresses.length; i++) {
+            PRIVATE_SALE_WHITELIST[addresses[i]] = true;
+        }
+    }
+
+    function removeFromWhitelist(address[] calldata addresses)
+        public
+        onlyOwner
+    {
+        for (uint256 i = 0; i < addresses.length; i++) {
+            PRIVATE_SALE_WHITELIST[addresses[i]] = false;
+        }
+    }
 }
