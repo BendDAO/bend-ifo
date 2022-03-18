@@ -5,6 +5,7 @@ import {
   MintableERC20__factory,
   MintableERC721__factory,
   Treasury__factory,
+  VeBend__factory,
   WETHGateway__factory,
 } from '../types';
 import { getFirstSigner } from './contracts-getters';
@@ -93,5 +94,13 @@ export const deployTreasury = async (args: [], verify?: boolean) =>
     await new Treasury__factory(await getFirstSigner()).deploy(...args),
     eContractid.Treasury,
     [],
+    verify
+  );
+
+export const deployVeBend = async (args: [string], verify?: boolean) =>
+  withSaveAndVerify(
+    await new VeBend__factory(await getFirstSigner()).deploy(...args),
+    eContractid.VeBend,
+    args,
     verify
   );

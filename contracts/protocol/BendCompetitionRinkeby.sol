@@ -4,15 +4,6 @@ pragma solidity ^0.8.0;
 import {BendCompetition} from "./BendCompetition.sol";
 
 contract BendCompetitionRinkeby is BendCompetition {
-    mapping(address => bool) public PRIVATE_SALE_WHITELIST;
-
-    constructor() {
-        // TODO: replace with real whitelist address
-        PRIVATE_SALE_WHITELIST[
-            address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)
-        ] = true;
-    }
-
     function getConfig() public pure override returns (Config memory config) {
         config.BEND_TOKEN_ADDRESS = address(
             0x0791A14d100bc773446adEf6570b71406A18fAA8
@@ -27,31 +18,11 @@ contract BendCompetitionRinkeby is BendCompetition {
         config.LEND_POOL_SHARE = 8000;
         config.BEND_TOKEN_REWARD_PER_ETH = 1 * 10**18;
         config.MAX_ETH_PAYMENT_PER_ADDR = 1 * 10**18;
+        config.VEBEND_ADDRESS = address(
+            0x52163eedA5Ab66aeaCe49C6cbEaa062540962660
+        );
+        config.VEBEND_LOCK_PERIOD = 7 days;
 
         return config;
-    }
-
-    function isInPrivateSaleWhitelist(address addr)
-        public
-        view
-        override
-        returns (bool)
-    {
-        return PRIVATE_SALE_WHITELIST[addr];
-    }
-
-    function addToWhitelist(address[] calldata addresses) public onlyOwner {
-        for (uint256 i = 0; i < addresses.length; i++) {
-            PRIVATE_SALE_WHITELIST[addresses[i]] = true;
-        }
-    }
-
-    function removeFromWhitelist(address[] calldata addresses)
-        public
-        onlyOwner
-    {
-        for (uint256 i = 0; i < addresses.length; i++) {
-            PRIVATE_SALE_WHITELIST[addresses[i]] = false;
-        }
     }
 }

@@ -8,6 +8,7 @@ import {
   deployMintableERC20,
   deployMintableERC721,
   deployTreasury,
+  deployVeBend,
   deployWETHGateway,
 } from '../helpers/contracts-deployments';
 import { DRE, waitForTx } from '../helpers/misc-utils';
@@ -26,14 +27,14 @@ import { ZERO_ADDRESS } from '../helpers/constants';
 
 enum Stage {
   Prepare,
-  PrivateSale,
-  PublicSale,
+  Sale,
   Finish,
 }
 
 describe('Competition', async () => {
   const oneBend = new BigNumber(1).shiftedBy(18);
   const oneETH = new BigNumber(1).shiftedBy(18);
+  const sevenDays = 7 * 24 * 60 * 60;
 
   before(async () => {
     BigNumber.config({
@@ -48,6 +49,7 @@ describe('Competition', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
+    const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
@@ -58,19 +60,22 @@ describe('Competition', async () => {
         LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
+        VEBEND_ADDRESS: veBend.address,
+        VEBEND_LOCK_PERIOD: sevenDays,
       },
     ]);
 
     expect(await bendCompetition.stage()).to.be.eq(Stage.Prepare);
     await expect(
       bendCompetition.connect(secondSigner).claim({})
-    ).to.be.revertedWith('not in the right stage or not in the whitelist');
+    ).to.be.revertedWith('not in sale');
   });
 
-  it('only whitelist can claim in PrivateSale stage', async () => {
+  it('everyone can claim in Sale stage', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
+    const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
@@ -81,6 +86,8 @@ describe('Competition', async () => {
         LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
+        VEBEND_ADDRESS: veBend.address,
+        VEBEND_LOCK_PERIOD: sevenDays,
       },
     ]);
 
@@ -90,24 +97,18 @@ describe('Competition', async () => {
     );
 
     await waitForTx(await bendCompetition.nextStage());
-    expect(await bendCompetition.stage()).to.be.eq(Stage.PrivateSale);
-    await expect(
-      bendCompetition.connect(secondSigner).claim({})
-    ).to.be.revertedWith('not in the right stage or not in the whitelist');
-
-    await waitForTx(
-      await bendCompetition.addToWhitelist([await secondSigner.getAddress()])
-    );
+    expect(await bendCompetition.stage()).to.be.eq(Stage.Sale);
 
     await expect(() =>
       bendCompetition
         .connect(secondSigner)
         .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
     ).to.changeEtherBalances(
-      [bendCompetition, secondSigner],
+      [bendCompetition, secondSigner, veBend],
       [
         oneETH.multipliedBy(0.1).toFixed(0),
         oneETH.multipliedBy(-0.1).toFixed(0),
+        oneETH.multipliedBy(0).toFixed(0),
       ]
     );
 
@@ -117,61 +118,10 @@ describe('Competition', async () => {
         .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
     ).to.changeTokenBalances(
       bendToken,
-      [bendCompetition, secondSigner],
+      [bendCompetition, secondSigner, veBend],
       [
         oneETH.multipliedBy(-0.05).toFixed(0),
-        oneETH.multipliedBy(0.05).toFixed(0),
-      ]
-    );
-  });
-
-  it('everyone can claim in PublicSale stage', async () => {
-    const [firstSigner, secondSigner] = await getEthersSigners();
-
-    const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
-
-    const bendCompetition = await deployBendCompetitionTest([
-      {
-        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
-        TREASURY_ADDRESS: ZERO_ADDRESS,
-        BEND_TOKEN_ADDRESS: bendToken.address,
-        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 8000,
-        BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
-        MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
-      },
-    ]);
-
-    await waitForTx(await bendToken.mint(oneBend.toFixed(0)));
-    await waitForTx(
-      await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
-    );
-
-    await waitForTx(await bendCompetition.nextStage());
-    await waitForTx(await bendCompetition.nextStage());
-    expect(await bendCompetition.stage()).to.be.eq(Stage.PublicSale);
-
-    await expect(() =>
-      bendCompetition
-        .connect(secondSigner)
-        .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
-    ).to.changeEtherBalances(
-      [bendCompetition, secondSigner],
-      [
-        oneETH.multipliedBy(0.1).toFixed(0),
-        oneETH.multipliedBy(-0.1).toFixed(0),
-      ]
-    );
-
-    await expect(() =>
-      bendCompetition
-        .connect(secondSigner)
-        .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
-    ).to.changeTokenBalances(
-      bendToken,
-      [bendCompetition, secondSigner],
-      [
-        oneETH.multipliedBy(-0.05).toFixed(0),
+        oneETH.multipliedBy(0).toFixed(0),
         oneETH.multipliedBy(0.05).toFixed(0),
       ]
     );
@@ -181,6 +131,7 @@ describe('Competition', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
+    const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
@@ -191,21 +142,23 @@ describe('Competition', async () => {
         LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
+        VEBEND_ADDRESS: veBend.address,
+        VEBEND_LOCK_PERIOD: sevenDays,
       },
     ]);
-    await waitForTx(await bendCompetition.nextStage());
     await waitForTx(await bendCompetition.nextStage());
     await waitForTx(await bendCompetition.nextStage());
     expect(await bendCompetition.stage()).to.be.eq(Stage.Finish);
     await expect(
       bendCompetition.connect(secondSigner).claim({})
-    ).to.be.revertedWith('not in the right stage or not in the whitelist');
+    ).to.be.revertedWith('not in sale');
   });
 
   it('should claim only MAX_ETH_PAYMENT_PER_ADDR', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
+    const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
@@ -216,6 +169,8 @@ describe('Competition', async () => {
         LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
+        VEBEND_ADDRESS: veBend.address,
+        VEBEND_LOCK_PERIOD: sevenDays,
       },
     ]);
 
@@ -224,7 +179,6 @@ describe('Competition', async () => {
       await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
     );
 
-    await waitForTx(await bendCompetition.nextStage());
     await waitForTx(await bendCompetition.nextStage());
 
     await expect(() =>
@@ -241,6 +195,7 @@ describe('Competition', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
+    const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
@@ -251,6 +206,8 @@ describe('Competition', async () => {
         LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
+        VEBEND_ADDRESS: veBend.address,
+        VEBEND_LOCK_PERIOD: sevenDays,
       },
     ]);
 
@@ -260,7 +217,6 @@ describe('Competition', async () => {
     );
 
     await waitForTx(await bendCompetition.nextStage());
-    await waitForTx(await bendCompetition.nextStage());
 
     await expect(() =>
       bendCompetition
@@ -268,9 +224,10 @@ describe('Competition', async () => {
         .claim({ value: oneETH.multipliedBy(10).toFixed(0) })
     ).to.changeTokenBalances(
       bendToken,
-      [bendCompetition, secondSigner],
+      [bendCompetition, secondSigner, veBend],
       [
         oneETH.multipliedBy(-0.5).toFixed(0),
+        oneETH.multipliedBy(0).toFixed(0),
         oneETH.multipliedBy(0.5).toFixed(0),
       ]
     );
@@ -282,6 +239,7 @@ describe('Competition', async () => {
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const wethGateway = await deployWETHGateway([]);
     const treasury = await deployTreasury([]);
+    const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
@@ -292,6 +250,8 @@ describe('Competition', async () => {
         LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
+        VEBEND_ADDRESS: veBend.address,
+        VEBEND_LOCK_PERIOD: sevenDays,
       },
     ]);
 
@@ -301,8 +261,7 @@ describe('Competition', async () => {
     );
 
     await waitForTx(await bendCompetition.nextStage());
-    await waitForTx(await bendCompetition.nextStage());
-    expect(await bendCompetition.stage()).to.be.eq(Stage.PublicSale);
+    expect(await bendCompetition.stage()).to.be.eq(Stage.Sale);
 
     expect(await bendCompetition.remainDivident()).to.be.eq(
       oneETH.multipliedBy(0).toFixed(0)
@@ -336,6 +295,7 @@ describe('Competition', async () => {
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const wethGateway = await deployWETHGateway([]);
     const treasury = await deployTreasury([]);
+    const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
@@ -346,6 +306,8 @@ describe('Competition', async () => {
         LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.multipliedBy(0.001).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.multipliedBy(1000).toFixed(0),
+        VEBEND_ADDRESS: veBend.address,
+        VEBEND_LOCK_PERIOD: sevenDays,
       },
     ]);
 
@@ -355,8 +317,7 @@ describe('Competition', async () => {
     );
 
     await waitForTx(await bendCompetition.nextStage());
-    await waitForTx(await bendCompetition.nextStage());
-    expect(await bendCompetition.stage()).to.be.eq(Stage.PublicSale);
+    expect(await bendCompetition.stage()).to.be.eq(Stage.Sale);
 
     expect(await bendCompetition.remainDivident()).to.be.eq(
       oneETH.multipliedBy(0).toFixed(0)
@@ -389,6 +350,7 @@ describe('Competition', async () => {
     const [firstSigner, secondSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
+    const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
@@ -399,6 +361,8 @@ describe('Competition', async () => {
         LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
+        VEBEND_ADDRESS: veBend.address,
+        VEBEND_LOCK_PERIOD: sevenDays,
       },
     ]);
 
@@ -415,6 +379,7 @@ describe('Competition', async () => {
       uiData.remainBendBalance.toString(),
       uiData.stage,
       uiData.bendBalance.toString(),
+      uiData.veBendLockedBalanceAmount.toString(),
       uiData.maxETHPayment.toString(),
       uiData.maxBendReward.toString(),
     ]).to.be.deep.eq([
@@ -424,11 +389,11 @@ describe('Competition', async () => {
       oneBend.toFixed(0),
       Stage.Prepare,
       '0',
+      '0',
       oneETH.toFixed(0),
       oneBend.div(2).toFixed(0),
     ]);
 
-    await waitForTx(await bendCompetition.nextStage());
     await waitForTx(await bendCompetition.nextStage());
 
     await waitForTx(
@@ -445,6 +410,7 @@ describe('Competition', async () => {
       uiData.remainBendBalance.toString(),
       uiData.stage,
       uiData.bendBalance.toString(),
+      uiData.veBendLockedBalanceAmount.toString(),
       uiData.maxETHPayment.toString(),
       uiData.maxBendReward.toString(),
     ]).to.be.deep.eq([
@@ -452,7 +418,8 @@ describe('Competition', async () => {
       oneBend.multipliedBy(0.05).toFixed(0),
       oneETH.multipliedBy(2).toFixed(0),
       oneBend.multipliedBy(0.95).toFixed(0),
-      Stage.PublicSale,
+      Stage.Sale,
+      oneBend.multipliedBy(0).toFixed(0),
       oneBend.multipliedBy(0.05).toFixed(0),
       oneETH.multipliedBy(0.9).toFixed(0),
       oneBend.multipliedBy(0.45).toFixed(0),
@@ -472,6 +439,7 @@ describe('Competition', async () => {
       uiData.remainBendBalance.toString(),
       uiData.stage,
       uiData.bendBalance.toString(),
+      uiData.veBendLockedBalanceAmount.toString(),
       uiData.maxETHPayment.toString(),
       uiData.maxBendReward.toString(),
     ]).to.be.deep.eq([
@@ -479,7 +447,8 @@ describe('Competition', async () => {
       oneBend.multipliedBy(0.5).toFixed(0),
       oneETH.multipliedBy(2).toFixed(0),
       oneBend.multipliedBy(0.5).toFixed(0),
-      Stage.PublicSale,
+      Stage.Sale,
+      oneBend.multipliedBy(0).toFixed(0),
       oneBend.multipliedBy(0.5).toFixed(0),
       oneETH.multipliedBy(0).toFixed(0),
       oneBend.multipliedBy(0).toFixed(0),

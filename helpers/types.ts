@@ -21,6 +21,7 @@ export enum eContractid {
   BendCompetition = 'BendCompetition',
   WETHGateway = 'WETHGateway',
   Treasury = 'Treasury',
+  VeBend = 'VeBend',
 }
 
 export type tEthereumAddress = string;

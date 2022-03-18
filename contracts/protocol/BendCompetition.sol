@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {ICryptoPunks} from "../interfaces/ICryptoPunks.sol";
 import {IWETHGateway} from "../interfaces/IWETHGateway.sol";
+import {IVeBend} from "../interfaces/IVeBend.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
@@ -13,8 +14,7 @@ import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
     enum Stage {
         Prepare,
-        PrivateSale,
-        PublicSale,
+        Sale,
         Finish
     }
 
@@ -22,6 +22,8 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         address BEND_TOKEN_ADDRESS;
         address WETH_GATEWAY_ADDRESS;
         address TREASURY_ADDRESS;
+        address VEBEND_ADDRESS;
+        uint256 VEBEND_LOCK_PERIOD;
         uint256 AUTO_DRAW_DIVIDEND_THRESHOLD;
         uint256 LEND_POOL_SHARE;
         uint256 BEND_TOKEN_REWARD_PER_ETH;
@@ -37,6 +39,8 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         Stage stage;
         // for current address
         uint256 bendBalance;
+        int256 veBendLockedBalanceAmount;
+        uint256 veBendLockedBalanceEnd;
         uint256 maxETHPayment;
         uint256 maxBendReward;
     }
@@ -61,33 +65,19 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
 
     function getConfig() public view virtual returns (Config memory config) {}
 
-    function isInPrivateSaleWhitelist(address addr)
-        public
-        view
-        virtual
-        returns (bool)
-    {}
-
     function nextStage() public onlyOwner {
         if (stage == Stage.Prepare) {
-            stage = Stage.PrivateSale;
-        } else if (stage == Stage.PrivateSale) {
-            stage = Stage.PublicSale;
-        } else if (stage == Stage.PublicSale) {
+            stage = Stage.Sale;
+        } else if (stage == Stage.Sale) {
             stage = Stage.Finish;
         } else {
-            revert();
+            revert("stage is already finished");
         }
     }
 
     function claim() external payable whenNotPaused nonReentrant {
         Config memory CONFIG = getConfig();
-        require(
-            ((stage == Stage.PublicSale) ||
-                (stage == Stage.PrivateSale &&
-                    isInPrivateSaleWhitelist(msg.sender))),
-            "not in the right stage or not in the whitelist"
-        );
+        require(stage == Stage.Sale, "not in sale");
 
         (uint256 ethPayment, uint256 bendReward) = _getClaimData(msg.value);
 
@@ -96,7 +86,25 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         remainDivident += ethPayment;
         bendClaimedTotal += bendReward;
 
-        IERC20(CONFIG.BEND_TOKEN_ADDRESS).transfer(msg.sender, bendReward);
+        IERC20(CONFIG.BEND_TOKEN_ADDRESS).approve(
+            CONFIG.VEBEND_ADDRESS,
+            bendReward
+        );
+
+        IVeBend.LockedBalance memory locked = IVeBend(CONFIG.VEBEND_ADDRESS)
+            .getLocked(msg.sender);
+        if (locked.amount > 0) {
+            IVeBend(CONFIG.VEBEND_ADDRESS).increaseAmountFor(
+                msg.sender,
+                bendReward
+            );
+        } else {
+            IVeBend(CONFIG.VEBEND_ADDRESS).createLockFor(
+                msg.sender,
+                bendReward,
+                CONFIG.VEBEND_LOCK_PERIOD
+            );
+        }
 
         uint256 ethRemain = msg.value - ethPayment;
         if (ethRemain > 0) {
@@ -175,6 +183,11 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         data.bendBalance = IERC20(CONFIG.BEND_TOKEN_ADDRESS).balanceOf(
             msg.sender
         );
+
+        IVeBend.LockedBalance memory locked = IVeBend(CONFIG.VEBEND_ADDRESS)
+            .getLocked(msg.sender);
+        data.veBendLockedBalanceAmount = locked.amount;
+        data.veBendLockedBalanceEnd = locked.end;
         (data.maxETHPayment, data.maxBendReward) = _getClaimData(
             type(uint256).max
         );
