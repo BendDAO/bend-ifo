@@ -20,12 +20,10 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
 
     struct Config {
         address BEND_TOKEN_ADDRESS;
-        address WETH_GATEWAY_ADDRESS;
-        address TREASURY_ADDRESS;
+        address TEAM_WALLET_ADDRESS;
         address VEBEND_ADDRESS;
         uint256 VEBEND_LOCK_PERIOD;
         uint256 AUTO_DRAW_DIVIDEND_THRESHOLD;
-        uint256 LEND_POOL_SHARE;
         uint256 BEND_TOKEN_REWARD_PER_ETH;
         uint256 MAX_ETH_PAYMENT_PER_ADDR;
     }
@@ -45,7 +43,7 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         uint256 maxBendReward;
     }
 
-    Stage public stage;
+    uint256 public immutable CONTRACT_CREATE_TIMESTAMP;
     mapping(address => uint256) public ethPaymentRecord;
     uint256 public ethPaymentTotal;
     uint256 public bendClaimedTotal;
@@ -59,25 +57,19 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
 
     event DrawDividend(
         address indexed operator,
-        uint256 amountToPool,
-        uint256 amountToTreasury
+        address indexed beneficiary,
+        uint256 amount
     );
+
+    constructor() {
+        CONTRACT_CREATE_TIMESTAMP = block.timestamp;
+    }
 
     function getConfig() public view virtual returns (Config memory config) {}
 
-    function nextStage() public onlyOwner {
-        if (stage == Stage.Prepare) {
-            stage = Stage.Sale;
-        } else if (stage == Stage.Sale) {
-            stage = Stage.Finish;
-        } else {
-            revert("stage is already finished");
-        }
-    }
-
     function claim() external payable whenNotPaused nonReentrant {
         Config memory CONFIG = getConfig();
-        require(stage == Stage.Sale, "not in sale");
+        require(stage() == Stage.Sale, "not in sale");
 
         (uint256 ethPayment, uint256 bendReward) = _getClaimData(msg.value);
 
@@ -120,24 +112,16 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
 
     function drawDividend() public {
         Config memory CONFIG = getConfig();
-        if (
-            CONFIG.WETH_GATEWAY_ADDRESS == address(0) ||
-            CONFIG.TREASURY_ADDRESS == address(0)
-        ) {
+        if (CONFIG.TEAM_WALLET_ADDRESS == address(0)) {
             return;
         }
 
-        uint256 amountToPool = (remainDivident * CONFIG.LEND_POOL_SHARE) /
-            10000;
-        uint256 amountToTreasury = remainDivident - amountToPool;
+        uint256 amount = remainDivident;
         remainDivident = 0;
 
-        IWETHGateway(CONFIG.WETH_GATEWAY_ADDRESS).depositETH{
-            value: amountToPool
-        }(owner(), 0);
-        _safeTransferETH(CONFIG.TREASURY_ADDRESS, amountToTreasury);
+        _safeTransferETH(CONFIG.TEAM_WALLET_ADDRESS, amount);
 
-        emit DrawDividend(msg.sender, amountToPool, amountToTreasury);
+        emit DrawDividend(msg.sender, CONFIG.TEAM_WALLET_ADDRESS, amount);
     }
 
     function pause() external onlyOwner {
@@ -174,7 +158,7 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         data.remainBendBalance = IERC20(CONFIG.BEND_TOKEN_ADDRESS).balanceOf(
             address(this)
         );
-        data.stage = stage;
+        data.stage = stage();
 
         if (msg.sender == address(0)) {
             return data;
@@ -193,6 +177,17 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         );
 
         return data;
+    }
+
+    function stage() public view returns (Stage) {
+        if (block.timestamp < CONTRACT_CREATE_TIMESTAMP) {
+            return Stage.Prepare;
+        }
+        if (block.timestamp >= CONTRACT_CREATE_TIMESTAMP + 7 days) {
+            return Stage.Finish;
+        }
+
+        return Stage.Sale;
     }
 
     function _getClaimData(uint256 ethBalance)

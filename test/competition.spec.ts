@@ -11,7 +11,7 @@ import {
   deployVeBend,
   deployWETHGateway,
 } from '../helpers/contracts-deployments';
-import { DRE, waitForTx } from '../helpers/misc-utils';
+import { DRE, increaseTime, waitForTx } from '../helpers/misc-utils';
 import {
   BendCompetition,
   CryptoPunksMarket,
@@ -45,45 +45,17 @@ describe('Competition', async () => {
     await rawBRE.run('set-DRE');
   });
 
-  it('should not cliam in Prepare stage', async () => {
-    const [firstSigner, secondSigner] = await getEthersSigners();
-
-    const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
-    const veBend = await deployVeBend([bendToken.address]);
-
-    const bendCompetition = await deployBendCompetitionTest([
-      {
-        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
-        TREASURY_ADDRESS: ZERO_ADDRESS,
-        BEND_TOKEN_ADDRESS: bendToken.address,
-        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 8000,
-        BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
-        MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
-        VEBEND_ADDRESS: veBend.address,
-        VEBEND_LOCK_PERIOD: sevenDays,
-      },
-    ]);
-
-    expect(await bendCompetition.stage()).to.be.eq(Stage.Prepare);
-    await expect(
-      bendCompetition.connect(secondSigner).claim({})
-    ).to.be.revertedWith('not in sale');
-  });
-
   it('everyone can claim in Sale stage', async () => {
-    const [firstSigner, secondSigner] = await getEthersSigners();
+    const [firstSigner, secondSigner, teamSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
-        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
-        TREASURY_ADDRESS: ZERO_ADDRESS,
+        TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
         VEBEND_ADDRESS: veBend.address,
@@ -96,7 +68,6 @@ describe('Competition', async () => {
       await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
     );
 
-    await waitForTx(await bendCompetition.nextStage());
     expect(await bendCompetition.stage()).to.be.eq(Stage.Sale);
 
     await expect(() =>
@@ -128,26 +99,25 @@ describe('Competition', async () => {
   });
 
   it('should not cliam in Finish stage', async () => {
-    const [firstSigner, secondSigner] = await getEthersSigners();
+    const [firstSigner, secondSigner, teamSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
-        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
-        TREASURY_ADDRESS: ZERO_ADDRESS,
+        TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
         VEBEND_ADDRESS: veBend.address,
         VEBEND_LOCK_PERIOD: sevenDays,
       },
     ]);
-    await waitForTx(await bendCompetition.nextStage());
-    await waitForTx(await bendCompetition.nextStage());
+
+    await increaseTime(sevenDays);
+
     expect(await bendCompetition.stage()).to.be.eq(Stage.Finish);
     await expect(
       bendCompetition.connect(secondSigner).claim({})
@@ -155,18 +125,16 @@ describe('Competition', async () => {
   });
 
   it('should claim only MAX_ETH_PAYMENT_PER_ADDR', async () => {
-    const [firstSigner, secondSigner] = await getEthersSigners();
+    const [firstSigner, secondSigner, teamSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
-        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
-        TREASURY_ADDRESS: ZERO_ADDRESS,
+        TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
         VEBEND_ADDRESS: veBend.address,
@@ -178,8 +146,6 @@ describe('Competition', async () => {
     await waitForTx(
       await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
     );
-
-    await waitForTx(await bendCompetition.nextStage());
 
     await expect(() =>
       bendCompetition
@@ -192,18 +158,16 @@ describe('Competition', async () => {
   });
 
   it('should reward only MAX_ETH_PAYMENT_PER_ADDR * BEND_TOKEN_REWARD_PER_ETH', async () => {
-    const [firstSigner, secondSigner] = await getEthersSigners();
+    const [firstSigner, secondSigner, teamSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
-        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
-        TREASURY_ADDRESS: ZERO_ADDRESS,
+        TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
         VEBEND_ADDRESS: veBend.address,
@@ -215,8 +179,6 @@ describe('Competition', async () => {
     await waitForTx(
       await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
     );
-
-    await waitForTx(await bendCompetition.nextStage());
 
     await expect(() =>
       bendCompetition
@@ -234,20 +196,16 @@ describe('Competition', async () => {
   });
 
   it('should draw dividend', async () => {
-    const [firstSigner, secondSigner] = await getEthersSigners();
+    const [firstSigner, secondSigner, teamSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
-    const wethGateway = await deployWETHGateway([]);
-    const treasury = await deployTreasury([]);
     const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
-        WETH_GATEWAY_ADDRESS: wethGateway.address,
-        TREASURY_ADDRESS: treasury.address,
+        TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
         VEBEND_ADDRESS: veBend.address,
@@ -259,9 +217,6 @@ describe('Competition', async () => {
     await waitForTx(
       await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
     );
-
-    await waitForTx(await bendCompetition.nextStage());
-    expect(await bendCompetition.stage()).to.be.eq(Stage.Sale);
 
     expect(await bendCompetition.remainDivident()).to.be.eq(
       oneETH.multipliedBy(0).toFixed(0)
@@ -276,11 +231,10 @@ describe('Competition', async () => {
     );
 
     await expect(() => bendCompetition.drawDividend()).to.changeEtherBalances(
-      [bendCompetition, wethGateway, treasury],
+      [bendCompetition, teamSigner],
       [
         oneETH.multipliedBy(-0.1).toFixed(0),
-        oneETH.multipliedBy(0.08).toFixed(0),
-        oneETH.multipliedBy(0.02).toFixed(0),
+        oneETH.multipliedBy(0.1).toFixed(0),
       ]
     );
 
@@ -290,20 +244,16 @@ describe('Competition', async () => {
   });
 
   it('should auto draw dividend', async () => {
-    const [firstSigner, secondSigner] = await getEthersSigners();
+    const [firstSigner, secondSigner, teamSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
-    const wethGateway = await deployWETHGateway([]);
-    const treasury = await deployTreasury([]);
     const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
-        WETH_GATEWAY_ADDRESS: wethGateway.address,
-        TREASURY_ADDRESS: treasury.address,
+        TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(5).toFixed(0),
-        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.multipliedBy(0.001).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.multipliedBy(1000).toFixed(0),
         VEBEND_ADDRESS: veBend.address,
@@ -315,9 +265,6 @@ describe('Competition', async () => {
     await waitForTx(
       await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
     );
-
-    await waitForTx(await bendCompetition.nextStage());
-    expect(await bendCompetition.stage()).to.be.eq(Stage.Sale);
 
     expect(await bendCompetition.remainDivident()).to.be.eq(
       oneETH.multipliedBy(0).toFixed(0)
@@ -336,29 +283,26 @@ describe('Competition', async () => {
         .connect(secondSigner)
         .claim({ value: oneETH.multipliedBy(4).toFixed(0) })
     ).to.changeEtherBalances(
-      [secondSigner, bendCompetition, wethGateway, treasury],
+      [secondSigner, bendCompetition, teamSigner],
       [
         oneETH.multipliedBy(-4).toFixed(0),
         oneETH.multipliedBy(-1).toFixed(0),
-        oneETH.multipliedBy(4).toFixed(0),
-        oneETH.multipliedBy(1).toFixed(0),
+        oneETH.multipliedBy(5).toFixed(0),
       ]
     );
   });
 
   it('should print ui data', async () => {
-    const [firstSigner, secondSigner] = await getEthersSigners();
+    const [firstSigner, secondSigner, teamSigner] = await getEthersSigners();
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
-        WETH_GATEWAY_ADDRESS: ZERO_ADDRESS,
-        TREASURY_ADDRESS: ZERO_ADDRESS,
+        TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        LEND_POOL_SHARE: 8000,
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
         VEBEND_ADDRESS: veBend.address,
@@ -387,14 +331,12 @@ describe('Competition', async () => {
       '0',
       oneETH.multipliedBy(2).toFixed(0),
       oneBend.toFixed(0),
-      Stage.Prepare,
+      Stage.Sale,
       '0',
       '0',
       oneETH.toFixed(0),
       oneBend.div(2).toFixed(0),
     ]);
-
-    await waitForTx(await bendCompetition.nextStage());
 
     await waitForTx(
       await bendCompetition

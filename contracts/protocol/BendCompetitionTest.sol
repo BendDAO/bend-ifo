@@ -7,7 +7,7 @@ import "hardhat/console.sol";
 contract BendCompetitionTest is BendCompetition {
     Config CONFIG;
 
-    constructor(Config memory config) {
+    constructor(Config memory config) BendCompetition() {
         CONFIG = config;
     }
 
