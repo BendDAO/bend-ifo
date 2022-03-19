@@ -9,7 +9,7 @@ contract BendCompetitionRinkeby is BendCompetition {
             0x0791A14d100bc773446adEf6570b71406A18fAA8
         );
         config.WETH_GATEWAY_ADDRESS = address(
-            0x1aDF8093E66d8A48F97bCf1bA174845Ec013bBE3
+            0x0f8DDEC5835c67C68c4A02dDe2236D20bEEA889d
         );
         config.TREASURY_ADDRESS = address(
             0x3Ef03697a005203589653d80AD885E3b85256D18
