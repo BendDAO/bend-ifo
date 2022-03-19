@@ -152,9 +152,8 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
 
         data.remainDivident = remainDivident;
         data.bendClaimedTotal = bendClaimedTotal;
-        data.bendPrice =
-            ((1 * 10**18) / CONFIG.BEND_TOKEN_REWARD_PER_ETH) *
-            10**18;
+        data.bendPrice = ((1 * 10**18 * 10**18) /
+            CONFIG.BEND_TOKEN_REWARD_PER_ETH);
         data.remainBendBalance = IERC20(CONFIG.BEND_TOKEN_ADDRESS).balanceOf(
             address(this)
         );

@@ -298,24 +298,31 @@ describe('Competition', async () => {
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
 
-    const bendCompetition = await deployBendCompetitionTest([
-      {
-        TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
-        BEND_TOKEN_ADDRESS: bendToken.address,
-        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
-        BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
-        MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
-        VEBEND_ADDRESS: veBend.address,
-        VEBEND_LOCK_PERIOD: sevenDays,
-      },
-    ]);
+    const config = {
+      TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
+      BEND_TOKEN_ADDRESS: bendToken.address,
+      AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
+      BEND_TOKEN_REWARD_PER_ETH: oneBend.multipliedBy(333333).toFixed(0),
+      MAX_ETH_PAYMENT_PER_ADDR: oneETH.multipliedBy(2).toFixed(0),
+      VEBEND_ADDRESS: veBend.address,
+      VEBEND_LOCK_PERIOD: sevenDays,
+    };
 
-    await waitForTx(await bendToken.mint(oneBend.toFixed(0)));
+    const bendCompetition = await deployBendCompetitionTest([config]);
+
+    const bendBalance = oneBend.multipliedBy(10000000);
+    await waitForTx(await bendToken.mint(bendBalance.toFixed(0)));
     await waitForTx(
-      await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
+      await bendToken.transfer(bendCompetition.address, bendBalance.toFixed(0))
     );
 
     let uiData = await bendCompetition.connect(secondSigner).uiData();
+
+    const bendPrice = oneETH
+      .shiftedBy(18)
+      .div(config.BEND_TOKEN_REWARD_PER_ETH)
+      .toFixed(0);
+
     expect([
       uiData.remainDivident.toString(),
       uiData.bendClaimedTotal.toString(),
@@ -329,13 +336,16 @@ describe('Competition', async () => {
     ]).to.be.deep.eq([
       '0',
       '0',
-      oneETH.multipliedBy(2).toFixed(0),
-      oneBend.toFixed(0),
+      bendPrice,
+      bendBalance.toFixed(0),
       Stage.Sale,
       '0',
       '0',
-      oneETH.toFixed(0),
-      oneBend.div(2).toFixed(0),
+      new BigNumber(config.MAX_ETH_PAYMENT_PER_ADDR).toFixed(0),
+      new BigNumber(config.BEND_TOKEN_REWARD_PER_ETH)
+        .multipliedBy(config.MAX_ETH_PAYMENT_PER_ADDR)
+        .shiftedBy(-18)
+        .toFixed(0),
     ]);
 
     await waitForTx(
@@ -357,20 +367,34 @@ describe('Competition', async () => {
       uiData.maxBendReward.toString(),
     ]).to.be.deep.eq([
       oneETH.multipliedBy(0.1).toFixed(0),
-      oneBend.multipliedBy(0.05).toFixed(0),
-      oneETH.multipliedBy(2).toFixed(0),
-      oneBend.multipliedBy(0.95).toFixed(0),
+      new BigNumber(config.BEND_TOKEN_REWARD_PER_ETH)
+        .multipliedBy(0.1)
+        .toFixed(0),
+      bendPrice,
+      bendBalance
+        .minus(
+          new BigNumber(config.BEND_TOKEN_REWARD_PER_ETH).multipliedBy(0.1)
+        )
+        .toFixed(0),
       Stage.Sale,
       oneBend.multipliedBy(0).toFixed(0),
-      oneBend.multipliedBy(0.05).toFixed(0),
-      oneETH.multipliedBy(0.9).toFixed(0),
-      oneBend.multipliedBy(0.45).toFixed(0),
+      new BigNumber(config.BEND_TOKEN_REWARD_PER_ETH)
+        .multipliedBy(0.1)
+        .toFixed(0),
+      new BigNumber(config.MAX_ETH_PAYMENT_PER_ADDR)
+        .minus(oneETH.multipliedBy(0.1))
+        .toFixed(0),
+      new BigNumber(config.MAX_ETH_PAYMENT_PER_ADDR)
+        .minus(oneETH.multipliedBy(0.1))
+        .multipliedBy(config.BEND_TOKEN_REWARD_PER_ETH)
+        .shiftedBy(-18)
+        .toFixed(0),
     ]);
 
     await waitForTx(
       await bendCompetition
         .connect(secondSigner)
-        .claim({ value: oneETH.multipliedBy(0.9).toFixed(0) })
+        .claim({ value: oneETH.multipliedBy(2).toFixed(0) })
     );
 
     uiData = await bendCompetition.connect(secondSigner).uiData();
@@ -385,13 +409,19 @@ describe('Competition', async () => {
       uiData.maxETHPayment.toString(),
       uiData.maxBendReward.toString(),
     ]).to.be.deep.eq([
-      oneETH.multipliedBy(1).toFixed(0),
-      oneBend.multipliedBy(0.5).toFixed(0),
       oneETH.multipliedBy(2).toFixed(0),
-      oneBend.multipliedBy(0.5).toFixed(0),
+      new BigNumber(config.BEND_TOKEN_REWARD_PER_ETH)
+        .multipliedBy(2)
+        .toFixed(0),
+      bendPrice,
+      bendBalance
+        .minus(new BigNumber(config.BEND_TOKEN_REWARD_PER_ETH).multipliedBy(2))
+        .toFixed(0),
       Stage.Sale,
       oneBend.multipliedBy(0).toFixed(0),
-      oneBend.multipliedBy(0.5).toFixed(0),
+      new BigNumber(config.BEND_TOKEN_REWARD_PER_ETH)
+        .multipliedBy(2)
+        .toFixed(0),
       oneETH.multipliedBy(0).toFixed(0),
       oneBend.multipliedBy(0).toFixed(0),
     ]);
