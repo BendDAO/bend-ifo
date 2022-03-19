@@ -17,7 +17,7 @@ contract BendCompetitionRinkeby is BendCompetition {
         config.VEBEND_ADDRESS = address(
             0x13b5d4FC8AcFD8e273C3B401F1B2D9e984C05e0A
         );
-        config.VEBEND_LOCK_PERIOD = 7 days;
+        config.VEBEND_LOCK_PERIOD = 14 days;
 
         return config;
     }

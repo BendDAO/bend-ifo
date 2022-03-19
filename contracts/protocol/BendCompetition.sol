@@ -94,7 +94,7 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
             IVeBend(CONFIG.VEBEND_ADDRESS).createLockFor(
                 msg.sender,
                 bendReward,
-                CONFIG.VEBEND_LOCK_PERIOD
+                block.timestamp + CONFIG.VEBEND_LOCK_PERIOD
             );
         }
 
