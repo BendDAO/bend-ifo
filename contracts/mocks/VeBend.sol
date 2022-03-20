@@ -51,4 +51,8 @@ contract VeBend is IVeBend {
     {
         return locked[_addr];
     }
+
+    function balanceOf(address _addr) external view override returns (uint256) {
+        return uint256(locked[_addr].amount);
+    }
 }

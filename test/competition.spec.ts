@@ -54,9 +54,11 @@ describe('Competition', async () => {
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
+    const treasury = await deployTreasury([]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
+        TREASURY_ADDRESS: treasury.address,
         TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
@@ -107,9 +109,11 @@ describe('Competition', async () => {
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
+    const treasury = await deployTreasury([]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
+        TREASURY_ADDRESS: treasury.address,
         TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
@@ -120,7 +124,7 @@ describe('Competition', async () => {
       },
     ]);
 
-    await increaseTime(30 * 24 * 60 * 60 + 1);
+    await increaseTime(90 * 24 * 60 * 60 + 1);
 
     await expect(
       bendCompetition.connect(secondSigner).claim(2, {})
@@ -132,9 +136,11 @@ describe('Competition', async () => {
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
+    const treasury = await deployTreasury([]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
+        TREASURY_ADDRESS: treasury.address,
         TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
@@ -155,9 +161,11 @@ describe('Competition', async () => {
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
+    const treasury = await deployTreasury([]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
+        TREASURY_ADDRESS: treasury.address,
         TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
@@ -188,9 +196,11 @@ describe('Competition', async () => {
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
+    const treasury = await deployTreasury([]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
+        TREASURY_ADDRESS: treasury.address,
         TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
@@ -226,9 +236,11 @@ describe('Competition', async () => {
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
+    const treasury = await deployTreasury([]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
+        TREASURY_ADDRESS: treasury.address,
         TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
@@ -274,9 +286,11 @@ describe('Competition', async () => {
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
+    const treasury = await deployTreasury([]);
 
     const bendCompetition = await deployBendCompetitionTest([
       {
+        TREASURY_ADDRESS: treasury.address,
         TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
         BEND_TOKEN_ADDRESS: bendToken.address,
         AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(5).toFixed(0),
@@ -323,8 +337,10 @@ describe('Competition', async () => {
 
     const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
     const veBend = await deployVeBend([bendToken.address]);
+    const treasury = await deployTreasury([]);
 
     const config = {
+      TREASURY_ADDRESS: treasury.address,
       TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
       BEND_TOKEN_ADDRESS: bendToken.address,
       AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),

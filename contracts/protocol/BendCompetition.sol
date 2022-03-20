@@ -19,6 +19,7 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
     }
 
     struct Config {
+        address TREASURY_ADDRESS;
         address BEND_TOKEN_ADDRESS;
         address TEAM_WALLET_ADDRESS;
         address VEBEND_ADDRESS;
@@ -82,6 +83,7 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         require(lockWeek >= CONFIG.VEBEND_LOCK_MIN_WEEK, "lock week too short");
 
         (uint256 ethPayment, uint256 bendReward) = _getClaimData(msg.value);
+        require(bendReward > 0, "not enough bend reward");
 
         ethPaymentRecord[msg.sender] += ethPayment;
         ethPaymentTotal += ethPayment;
@@ -142,19 +144,17 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         _unpause();
     }
 
-    function emergencyTokenTransfer(
-        address token,
-        address to,
-        uint256 amount
-    ) external onlyOwner {
-        IERC20(token).transfer(to, amount);
-    }
-
-    function emergencyEtherTransfer(address to, uint256 amount)
+    function emergencyTokenTransfer(address token, uint256 amount)
         external
         onlyOwner
     {
-        _safeTransferETH(to, amount);
+        Config memory CONFIG = getConfig();
+        IERC20(token).transfer(CONFIG.TREASURY_ADDRESS, amount);
+    }
+
+    function emergencyEtherTransfer(uint256 amount) external onlyOwner {
+        Config memory CONFIG = getConfig();
+        _safeTransferETH(CONFIG.TREASURY_ADDRESS, amount);
     }
 
     function uiData() external view returns (UIData memory data) {
@@ -200,7 +200,7 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         if (block.timestamp < CONTRACT_CREATE_TIMESTAMP) {
             return Stage.Prepare;
         }
-        if (block.timestamp >= CONTRACT_CREATE_TIMESTAMP + 30 days) {
+        if (block.timestamp >= CONTRACT_CREATE_TIMESTAMP + 90 days) {
             return Stage.Finish;
         }
 

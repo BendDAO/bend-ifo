@@ -26,4 +26,6 @@ interface IVeBend {
         external
         view
         returns (LockedBalance memory);
+
+    function balanceOf(address _addr) external view returns (uint256);
 }
