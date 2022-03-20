@@ -6,7 +6,7 @@ import {BendCompetition} from "./BendCompetition.sol";
 contract BendCompetitionMainnet is BendCompetition {
     function getConfig() public pure override returns (Config memory config) {
         config.TREASURY_ADDRESS = address(
-            0x844d603F22dE09F4586d2C5f3a01B5c8f42a65C9
+            0x472FcC65Fab565f75B1e0E861864A86FE5bcEd7B
         );
         config.BEND_TOKEN_ADDRESS = address(
             0x0d02755a5700414B26FF040e1dE35D337DF56218
