@@ -14,11 +14,11 @@ contract BendCompetitionMainnet is BendCompetition {
         config.TEAM_WALLET_ADDRESS = address(
             0x4D62360CEcF722A7888b1f97D4c7e8b170071248
         );
-        config.AUTO_DRAW_DIVIDEND_THRESHOLD = 10 * 10**18;
+        config.AUTO_DRAW_DIVIDEND_THRESHOLD = 100 * 10**18;
         config.BEND_TOKEN_REWARD_PER_ETH = 333333 * 10**18;
         config.MAX_ETH_PAYMENT_PER_ADDR = 1 * 10**18;
         config.VEBEND_ADDRESS = address(
-            0x0
+            0xd7e97172C2419566839Bf80DeeA46D22B1B2E06E
         );
         config.VEBEND_LOCK_MIN_WEEK = 2;
 
