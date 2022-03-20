@@ -12,12 +12,12 @@ contract BendCompetitionRinkeby is BendCompetition {
             0x844d603F22dE09F4586d2C5f3a01B5c8f42a65C9
         );
         config.AUTO_DRAW_DIVIDEND_THRESHOLD = 100 * 10**18;
-        config.BEND_TOKEN_REWARD_PER_ETH = 333333 * 10**18;
+        config.BEND_TOKEN_REWARD_PER_ETH = 3 * 10**18;
         config.MAX_ETH_PAYMENT_PER_ADDR = 1 * 10**18;
         config.VEBEND_ADDRESS = address(
             0x13b5d4FC8AcFD8e273C3B401F1B2D9e984C05e0A
         );
-        config.VEBEND_LOCK_PERIOD = 14 days;
+        config.VEBEND_LOCK_MIN_PERIOD = 14 days;
 
         return config;
     }

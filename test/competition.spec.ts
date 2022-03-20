@@ -34,7 +34,7 @@ enum Stage {
 describe('Competition', async () => {
   const oneBend = new BigNumber(1).shiftedBy(18);
   const oneETH = new BigNumber(1).shiftedBy(18);
-  const sevenDays = 7 * 24 * 60 * 60;
+  const twoWeeks = 14 * 24 * 60 * 60;
 
   before(async () => {
     BigNumber.config({
@@ -59,7 +59,7 @@ describe('Competition', async () => {
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
         VEBEND_ADDRESS: veBend.address,
-        VEBEND_LOCK_PERIOD: sevenDays,
+        VEBEND_LOCK_MIN_PERIOD: twoWeeks,
       },
     ]);
 
@@ -73,7 +73,7 @@ describe('Competition', async () => {
     await expect(() =>
       bendCompetition
         .connect(secondSigner)
-        .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
+        .claim(twoWeeks, { value: oneETH.multipliedBy(0.1).toFixed(0) })
     ).to.changeEtherBalances(
       [bendCompetition, secondSigner, veBend],
       [
@@ -86,7 +86,7 @@ describe('Competition', async () => {
     await expect(() =>
       bendCompetition
         .connect(secondSigner)
-        .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
+        .claim(twoWeeks, { value: oneETH.multipliedBy(0.1).toFixed(0) })
     ).to.changeTokenBalances(
       bendToken,
       [bendCompetition, secondSigner, veBend],
@@ -112,16 +112,41 @@ describe('Competition', async () => {
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
         VEBEND_ADDRESS: veBend.address,
-        VEBEND_LOCK_PERIOD: sevenDays,
+        VEBEND_LOCK_MIN_PERIOD: twoWeeks,
       },
     ]);
 
-    await increaseTime(sevenDays);
+    await increaseTime(twoWeeks);
 
     expect(await bendCompetition.stage()).to.be.eq(Stage.Finish);
     await expect(
-      bendCompetition.connect(secondSigner).claim({})
+      bendCompetition.connect(secondSigner).claim(twoWeeks, {})
     ).to.be.revertedWith('not in sale');
+  });
+
+  it('should lock at least VEBEND_LOCK_MIN_PERIOD', async () => {
+    const [firstSigner, secondSigner, teamSigner] = await getEthersSigners();
+
+    const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
+    const veBend = await deployVeBend([bendToken.address]);
+
+    const bendCompetition = await deployBendCompetitionTest([
+      {
+        TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
+        BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
+        MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
+        VEBEND_ADDRESS: veBend.address,
+        VEBEND_LOCK_MIN_PERIOD: twoWeeks,
+      },
+    ]);
+
+    await expect(
+      bendCompetition
+        .connect(secondSigner)
+        .claim(new BigNumber(twoWeeks).minus(1).toFixed(0), {})
+    ).to.be.revertedWith('lock period too short');
   });
 
   it('should claim only MAX_ETH_PAYMENT_PER_ADDR', async () => {
@@ -138,7 +163,7 @@ describe('Competition', async () => {
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
         VEBEND_ADDRESS: veBend.address,
-        VEBEND_LOCK_PERIOD: sevenDays,
+        VEBEND_LOCK_MIN_PERIOD: twoWeeks,
       },
     ]);
 
@@ -150,7 +175,7 @@ describe('Competition', async () => {
     await expect(() =>
       bendCompetition
         .connect(secondSigner)
-        .claim({ value: oneETH.multipliedBy(10).toFixed(0) })
+        .claim(twoWeeks, { value: oneETH.multipliedBy(10).toFixed(0) })
     ).to.changeEtherBalances(
       [bendCompetition, secondSigner],
       [oneETH.multipliedBy(1).toFixed(0), oneETH.multipliedBy(-1).toFixed(0)]
@@ -171,7 +196,7 @@ describe('Competition', async () => {
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
         VEBEND_ADDRESS: veBend.address,
-        VEBEND_LOCK_PERIOD: sevenDays,
+        VEBEND_LOCK_MIN_PERIOD: twoWeeks,
       },
     ]);
 
@@ -183,7 +208,7 @@ describe('Competition', async () => {
     await expect(() =>
       bendCompetition
         .connect(secondSigner)
-        .claim({ value: oneETH.multipliedBy(10).toFixed(0) })
+        .claim(twoWeeks, { value: oneETH.multipliedBy(10).toFixed(0) })
     ).to.changeTokenBalances(
       bendToken,
       [bendCompetition, secondSigner, veBend],
@@ -209,7 +234,7 @@ describe('Competition', async () => {
         BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
         VEBEND_ADDRESS: veBend.address,
-        VEBEND_LOCK_PERIOD: sevenDays,
+        VEBEND_LOCK_MIN_PERIOD: twoWeeks,
       },
     ]);
 
@@ -224,7 +249,7 @@ describe('Competition', async () => {
     await waitForTx(
       await bendCompetition
         .connect(secondSigner)
-        .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
+        .claim(twoWeeks, { value: oneETH.multipliedBy(0.1).toFixed(0) })
     );
     expect(await bendCompetition.remainDivident()).to.be.eq(
       oneETH.multipliedBy(0.1).toFixed(0)
@@ -257,7 +282,7 @@ describe('Competition', async () => {
         BEND_TOKEN_REWARD_PER_ETH: oneBend.multipliedBy(0.001).toFixed(0),
         MAX_ETH_PAYMENT_PER_ADDR: oneETH.multipliedBy(1000).toFixed(0),
         VEBEND_ADDRESS: veBend.address,
-        VEBEND_LOCK_PERIOD: sevenDays,
+        VEBEND_LOCK_MIN_PERIOD: twoWeeks,
       },
     ]);
 
@@ -272,7 +297,7 @@ describe('Competition', async () => {
     await waitForTx(
       await bendCompetition
         .connect(secondSigner)
-        .claim({ value: oneETH.multipliedBy(1).toFixed(0) })
+        .claim(twoWeeks, { value: oneETH.multipliedBy(1).toFixed(0) })
     );
     expect(await bendCompetition.remainDivident()).to.be.eq(
       oneETH.multipliedBy(1).toFixed(0)
@@ -281,7 +306,7 @@ describe('Competition', async () => {
     await expect(() =>
       bendCompetition
         .connect(secondSigner)
-        .claim({ value: oneETH.multipliedBy(4).toFixed(0) })
+        .claim(twoWeeks, { value: oneETH.multipliedBy(4).toFixed(0) })
     ).to.changeEtherBalances(
       [secondSigner, bendCompetition, teamSigner],
       [
@@ -305,7 +330,7 @@ describe('Competition', async () => {
       BEND_TOKEN_REWARD_PER_ETH: oneBend.multipliedBy(333333).toFixed(0),
       MAX_ETH_PAYMENT_PER_ADDR: oneETH.multipliedBy(2).toFixed(0),
       VEBEND_ADDRESS: veBend.address,
-      VEBEND_LOCK_PERIOD: sevenDays,
+      VEBEND_LOCK_MIN_PERIOD: twoWeeks,
     };
 
     const bendCompetition = await deployBendCompetitionTest([config]);
@@ -351,7 +376,7 @@ describe('Competition', async () => {
     await waitForTx(
       await bendCompetition
         .connect(secondSigner)
-        .claim({ value: oneETH.multipliedBy(0.1).toFixed(0) })
+        .claim(twoWeeks, { value: oneETH.multipliedBy(0.1).toFixed(0) })
     );
 
     uiData = await bendCompetition.connect(secondSigner).uiData();
@@ -394,7 +419,7 @@ describe('Competition', async () => {
     await waitForTx(
       await bendCompetition
         .connect(secondSigner)
-        .claim({ value: oneETH.multipliedBy(2).toFixed(0) })
+        .claim(twoWeeks, { value: oneETH.multipliedBy(2).toFixed(0) })
     );
 
     uiData = await bendCompetition.connect(secondSigner).uiData();

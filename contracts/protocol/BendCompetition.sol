@@ -22,7 +22,7 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         address BEND_TOKEN_ADDRESS;
         address TEAM_WALLET_ADDRESS;
         address VEBEND_ADDRESS;
-        uint256 VEBEND_LOCK_PERIOD;
+        uint256 VEBEND_LOCK_MIN_PERIOD;
         uint256 AUTO_DRAW_DIVIDEND_THRESHOLD;
         uint256 BEND_TOKEN_REWARD_PER_ETH;
         uint256 MAX_ETH_PAYMENT_PER_ADDR;
@@ -67,9 +67,18 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
 
     function getConfig() public view virtual returns (Config memory config) {}
 
-    function claim() external payable whenNotPaused nonReentrant {
+    function claim(uint256 lockPeriod)
+        external
+        payable
+        whenNotPaused
+        nonReentrant
+    {
         Config memory CONFIG = getConfig();
         require(stage() == Stage.Sale, "not in sale");
+        require(
+            lockPeriod >= CONFIG.VEBEND_LOCK_MIN_PERIOD,
+            "lock period too short"
+        );
 
         (uint256 ethPayment, uint256 bendReward) = _getClaimData(msg.value);
 
@@ -94,7 +103,7 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
             IVeBend(CONFIG.VEBEND_ADDRESS).createLockFor(
                 msg.sender,
                 bendReward,
-                block.timestamp + CONFIG.VEBEND_LOCK_PERIOD
+                block.timestamp + lockPeriod + 60 // +60s to make sure the lock is avaiable
             );
         }
 
