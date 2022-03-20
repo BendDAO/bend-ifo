@@ -1,4 +1,5 @@
 import {
+  BendCompetitionMainnet__factory,
   BendCompetitionRinkeby__factory,
   BendCompetitionTest__factory,
   CryptoPunksMarket__factory,
@@ -64,7 +65,7 @@ export const deployBendCompetition = async (
   const factory = {
     [eEthereumNetwork.coverage]: null,
     [eEthereumNetwork.hardhat]: BendCompetitionRinkeby__factory,
-    [eEthereumNetwork.main]: null,
+    [eEthereumNetwork.main]: BendCompetitionMainnet__factory,
     [eEthereumNetwork.rinkeby]: BendCompetitionRinkeby__factory,
     [eEthereumNetwork.localhost]: null,
   }[network];
