@@ -33,12 +33,14 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         uint256 remainDivident;
         uint256 bendClaimedTotal;
         uint256 bendPrice;
+        uint256 bendTokenRewardPerETH;
         uint256 remainBendBalance;
         uint256 veBendLockMinWeek;
         uint256 veBendCurrentLockStartTimestamp;
         Stage stage;
         // for current address
         uint256 bendBalance;
+        uint256 veBendBalance;
         int256 veBendLockedBalanceAmount;
         uint256 veBendLockedBalanceEnd;
         uint256 maxETHPayment;
@@ -162,6 +164,7 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         data.bendClaimedTotal = bendClaimedTotal;
         data.bendPrice = ((1 * 10**18 * 10**18) /
             CONFIG.BEND_TOKEN_REWARD_PER_ETH);
+        data.bendTokenRewardPerETH = CONFIG.BEND_TOKEN_REWARD_PER_ETH;
         data.remainBendBalance = IERC20(CONFIG.BEND_TOKEN_ADDRESS).balanceOf(
             address(this)
         );
@@ -176,6 +179,9 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         }
 
         data.bendBalance = IERC20(CONFIG.BEND_TOKEN_ADDRESS).balanceOf(
+            msg.sender
+        );
+        data.veBendBalance = IERC20(CONFIG.VEBEND_ADDRESS).balanceOf(
             msg.sender
         );
 
