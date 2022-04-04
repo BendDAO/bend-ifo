@@ -5,13 +5,19 @@ import {ICryptoPunks} from "../interfaces/ICryptoPunks.sol";
 import {IWETHGateway} from "../interfaces/IWETHGateway.sol";
 import {IVeBend} from "../interfaces/IVeBend.sol";
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+import {IERC20Upgradeable, SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
-abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
+abstract contract BendCompetition is
+    OwnableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable
+{
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+
     enum Stage {
         Prepare,
         Sale,
@@ -48,7 +54,7 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         uint256 maxBendReward;
     }
 
-    uint256 public immutable CONTRACT_CREATE_TIMESTAMP;
+    uint256 public CONTRACT_CREATE_TIMESTAMP;
     mapping(address => uint256) public ethPaymentRecord;
     uint256 public ethPaymentTotal;
     uint256 public bendClaimedTotal;
@@ -66,7 +72,11 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         uint256 amount
     );
 
-    constructor() {
+    function __Competition_init() internal initializer {
+        __Ownable_init();
+        __ReentrancyGuard_init();
+        __Pausable_init();
+
         CONTRACT_CREATE_TIMESTAMP = block.timestamp;
     }
 
@@ -90,7 +100,7 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         remainDivident += ethPayment;
         bendClaimedTotal += bendReward;
 
-        IERC20(CONFIG.BEND_TOKEN_ADDRESS).approve(
+        IERC20Upgradeable(CONFIG.BEND_TOKEN_ADDRESS).approve(
             CONFIG.VEBEND_ADDRESS,
             bendReward
         );
@@ -149,7 +159,7 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         onlyOwner
     {
         Config memory CONFIG = getConfig();
-        IERC20(token).transfer(CONFIG.TREASURY_ADDRESS, amount);
+        IERC20Upgradeable(token).transfer(CONFIG.TREASURY_ADDRESS, amount);
     }
 
     function emergencyEtherTransfer(uint256 amount) external onlyOwner {
@@ -165,9 +175,8 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         data.bendPrice = ((1 * 10**18 * 10**18) /
             CONFIG.BEND_TOKEN_REWARD_PER_ETH);
         data.bendTokenRewardPerETH = CONFIG.BEND_TOKEN_REWARD_PER_ETH;
-        data.remainBendBalance = IERC20(CONFIG.BEND_TOKEN_ADDRESS).balanceOf(
-            address(this)
-        );
+        data.remainBendBalance = IERC20Upgradeable(CONFIG.BEND_TOKEN_ADDRESS)
+            .balanceOf(address(this));
         data.veBendLockMinWeek = CONFIG.VEBEND_LOCK_MIN_WEEK;
         data.veBendCurrentLockStartTimestamp = ((block.timestamp / 604800) *
             604800);
@@ -178,10 +187,9 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
             return data;
         }
 
-        data.bendBalance = IERC20(CONFIG.BEND_TOKEN_ADDRESS).balanceOf(
-            msg.sender
-        );
-        data.veBendBalance = IERC20(CONFIG.VEBEND_ADDRESS).balanceOf(
+        data.bendBalance = IERC20Upgradeable(CONFIG.BEND_TOKEN_ADDRESS)
+            .balanceOf(msg.sender);
+        data.veBendBalance = IERC20Upgradeable(CONFIG.VEBEND_ADDRESS).balanceOf(
             msg.sender
         );
 
@@ -217,9 +225,8 @@ abstract contract BendCompetition is Ownable, ReentrancyGuard, Pausable {
         }
 
         Config memory CONFIG = getConfig();
-        uint256 bendBalance = IERC20(CONFIG.BEND_TOKEN_ADDRESS).balanceOf(
-            address(this)
-        );
+        uint256 bendBalance = IERC20Upgradeable(CONFIG.BEND_TOKEN_ADDRESS)
+            .balanceOf(address(this));
         if (bendBalance <= 0) {
             return (ethPayment, bendReward);
         }
