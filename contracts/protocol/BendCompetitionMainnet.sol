@@ -5,6 +5,8 @@ import {BendCompetition} from "./BendCompetition.sol";
 
 contract BendCompetitionMainnet is BendCompetition {
     function initialize() external initializer {
+        __Competition_init();
+
         BendCompetition oldContract = BendCompetition(
             0x3984235DC18f07d9AEAaEcD9D62eC95402291524
         );
