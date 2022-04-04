@@ -1,0 +1,162 @@
+{
+  "manifestVersion": "3.2",
+  "admin": {
+    "address": "0xB8c405A29976740BD793CDaE959b262bb4758fb5",
+    "txHash": "0xb1fdfb5601d9e9c522b938c99063321adde21da567e1a31b76fffa43e949b253"
+  },
+  "proxies": [
+    {
+      "address": "0xDAdd1A91529ceb5Da31D8bB7B1c5E2654d6e8972",
+      "txHash": "0x3d2e56f12c8c1bb69a44e139c30b8dd8bc5bf516627afd3e3852a012cecc3cf3",
+      "kind": "transparent"
+    }
+  ],
+  "impls": {
+    "aa91ce187ca93a3dbcea3b8f94b2e5824d0b19dd1fe0b146960383a16f17c5bf": {
+      "address": "0x4BAb38CD5E463d34F6c4E1c0c38436F3D7FA9720",
+      "txHash": "0xdb672f0767c5a8fd11b6545e3e192a6ccbe6e31b57edcc69ad424a1199430b7b",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:87"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:74"
+          },
+          {
+            "label": "_paused",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_bool",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:102"
+          },
+          {
+            "label": "CONTRACT_CREATE_TIMESTAMP",
+            "offset": 0,
+            "slot": "201",
+            "type": "t_uint256",
+            "contract": "BendCompetition",
+            "src": "contracts/protocol/BendCompetition.sol:57"
+          },
+          {
+            "label": "ethPaymentRecord",
+            "offset": 0,
+            "slot": "202",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "BendCompetition",
+            "src": "contracts/protocol/BendCompetition.sol:58"
+          },
+          {
+            "label": "ethPaymentTotal",
+            "offset": 0,
+            "slot": "203",
+            "type": "t_uint256",
+            "contract": "BendCompetition",
+            "src": "contracts/protocol/BendCompetition.sol:59"
+          },
+          {
+            "label": "bendClaimedTotal",
+            "offset": 0,
+            "slot": "204",
+            "type": "t_uint256",
+            "contract": "BendCompetition",
+            "src": "contracts/protocol/BendCompetition.sol:60"
+          },
+          {
+            "label": "remainDivident",
+            "offset": 0,
+            "slot": "205",
+            "type": "t_uint256",
+            "contract": "BendCompetition",
+            "src": "contracts/protocol/BendCompetition.sol:61"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          }
+        }
+      }
+    }
+  }
+}
