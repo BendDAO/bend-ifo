@@ -231,6 +231,46 @@ describe('Competition', async () => {
     );
   });
 
+  it('should reward if lock 0 week', async () => {
+    const [firstSigner, secondSigner, teamSigner] = await getEthersSigners();
+
+    const bendToken = await deployMintableERC20(['BendToken', 'BEND', '18']);
+    const veBend = await deployVeBend([bendToken.address]);
+    const treasury = await deployTreasury([]);
+
+    const bendCompetition = await deployBendCompetitionTest([
+      {
+        TREASURY_ADDRESS: treasury.address,
+        TEAM_WALLET_ADDRESS: await teamSigner.getAddress(),
+        BEND_TOKEN_ADDRESS: bendToken.address,
+        AUTO_DRAW_DIVIDEND_THRESHOLD: oneETH.multipliedBy(100).toFixed(0),
+        BEND_TOKEN_REWARD_PER_ETH: oneBend.div(2).toFixed(0),
+        MAX_ETH_PAYMENT_PER_ADDR: oneETH.toFixed(0),
+        VEBEND_ADDRESS: veBend.address,
+        VEBEND_LOCK_MIN_WEEK: 0,
+      },
+    ]);
+
+    await waitForTx(await bendToken.mint(oneBend.toFixed(0)));
+    await waitForTx(
+      await bendToken.transfer(bendCompetition.address, oneBend.toFixed(0))
+    );
+
+    await expect(() =>
+      bendCompetition
+        .connect(secondSigner)
+        .claim(0, { value: oneETH.multipliedBy(10).toFixed(0) })
+    ).to.changeTokenBalances(
+      bendToken,
+      [bendCompetition, secondSigner, veBend],
+      [
+        oneETH.multipliedBy(-0.5).toFixed(0),
+        oneETH.multipliedBy(0.5).toFixed(0),
+        oneETH.multipliedBy(0).toFixed(0),
+      ]
+    );
+  });
+
   it('should draw dividend', async () => {
     const [firstSigner, secondSigner, teamSigner] = await getEthersSigners();
 
