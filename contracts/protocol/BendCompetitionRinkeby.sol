@@ -14,7 +14,6 @@ contract BendCompetitionRinkeby is BendCompetition {
         CONTRACT_CREATE_TIMESTAMP = oldContract.CONTRACT_CREATE_TIMESTAMP();
         ethPaymentTotal = oldContract.ethPaymentTotal();
         bendClaimedTotal = oldContract.bendClaimedTotal();
-        remainDivident = oldContract.remainDivident();
     }
 
     function getConfig() public pure override returns (Config memory config) {
