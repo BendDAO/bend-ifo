@@ -100,35 +100,31 @@ abstract contract BendCompetition is
         remainDivident += ethPayment;
         bendClaimedTotal += bendReward;
 
-        IVeBend.LockedBalance memory locked = IVeBend(CONFIG.VEBEND_ADDRESS)
-            .getLocked(msg.sender);
-
-        if (locked.amount > 0) {
+        if (lockWeek > 0) {
             IERC20Upgradeable(CONFIG.BEND_TOKEN_ADDRESS).approve(
                 CONFIG.VEBEND_ADDRESS,
                 bendReward
             );
-            IVeBend(CONFIG.VEBEND_ADDRESS).increaseAmountFor(
-                msg.sender,
-                bendReward
-            );
-        } else {
-            if (lockWeek > 0) {
-                IERC20Upgradeable(CONFIG.BEND_TOKEN_ADDRESS).approve(
-                    CONFIG.VEBEND_ADDRESS,
+
+            IVeBend.LockedBalance memory locked = IVeBend(CONFIG.VEBEND_ADDRESS)
+                .getLocked(msg.sender);
+            if (locked.amount > 0) {
+                IVeBend(CONFIG.VEBEND_ADDRESS).increaseAmountFor(
+                    msg.sender,
                     bendReward
                 );
+            } else {
                 IVeBend(CONFIG.VEBEND_ADDRESS).createLockFor(
                     msg.sender,
                     bendReward,
                     ((block.timestamp / 604800) + lockWeek) * 604800
                 );
-            } else {
-                IERC20Upgradeable(CONFIG.BEND_TOKEN_ADDRESS).transfer(
-                    msg.sender,
-                    bendReward
-                );
             }
+        } else {
+            IERC20Upgradeable(CONFIG.BEND_TOKEN_ADDRESS).transfer(
+                msg.sender,
+                bendReward
+            );
         }
 
         uint256 ethRemain = msg.value - ethPayment;
