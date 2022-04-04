@@ -8,11 +8,10 @@ import {
   Treasury__factory,
   VeBend__factory,
   WETHGateway__factory,
-} from '../types';
-import { getFirstSigner } from './contracts-getters';
-import { withSaveAndVerify } from './contracts-helpers';
-import { eContractid, eEthereumNetwork, eNetwork } from './types';
-
+} from "../types";
+import { getFirstSigner } from "./contracts-getters";
+import { withSaveAndVerify } from "./contracts-helpers";
+import { eContractid, eEthereumNetwork, eNetwork } from "./types";
 export const deployMintableERC20 = async (
   args: [string, string, string],
   verify?: boolean
@@ -46,7 +45,7 @@ export const deployCryptoPunksMarket = async (args: [], verify?: boolean) =>
   );
 
 export const deployBendCompetitionTest = async (
-  args: Parameters<typeof BendCompetitionTest__factory['prototype']['deploy']>,
+  args: Parameters<typeof BendCompetitionTest__factory["prototype"]["deploy"]>,
   verify?: boolean
 ) =>
   withSaveAndVerify(
@@ -80,6 +79,28 @@ export const deployBendCompetition = async (
     [],
     verify
   );
+};
+
+export const deployBendCompetitionProxy = async (
+  network: eNetwork,
+  verify?: boolean
+) => {
+  const factory = {
+    [eEthereumNetwork.coverage]: null,
+    [eEthereumNetwork.hardhat]: "BendCompetitionRinkeby",
+    [eEthereumNetwork.main]: "BendCompetitionMainnet",
+    [eEthereumNetwork.rinkeby]: "BendCompetitionRinkeby",
+    [eEthereumNetwork.localhost]: null,
+  }[network];
+
+  if (!factory) {
+    throw new Error(`Unsupported network: ${network}`);
+  }
+
+  let hre = await import("hardhat");
+  const upgradeable = await hre.ethers.getContractFactory(factory);
+  let contract = await hre.upgrades.deployProxy(upgradeable, []);
+  return withSaveAndVerify(contract, eContractid.BendCompetition, [], verify);
 };
 
 export const deployWETHGateway = async (args: [], verify?: boolean) =>
