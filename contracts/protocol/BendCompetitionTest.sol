@@ -6,7 +6,8 @@ import {BendCompetition} from "./BendCompetition.sol";
 contract BendCompetitionTest is BendCompetition {
     Config CONFIG;
 
-    constructor(Config memory config) BendCompetition() {
+    function initialize(Config memory config) external initializer {
+        __Competition_init();
         CONFIG = config;
     }
 

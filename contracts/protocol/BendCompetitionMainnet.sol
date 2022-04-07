@@ -4,6 +4,18 @@ pragma solidity ^0.8.0;
 import {BendCompetition} from "./BendCompetition.sol";
 
 contract BendCompetitionMainnet is BendCompetition {
+    function initialize() external initializer {
+        __Competition_init();
+
+        BendCompetition oldContract = BendCompetition(
+            0x3984235DC18f07d9AEAaEcD9D62eC95402291524
+        );
+
+        CONTRACT_CREATE_TIMESTAMP = oldContract.CONTRACT_CREATE_TIMESTAMP();
+        ethPaymentTotal = oldContract.ethPaymentTotal();
+        bendClaimedTotal = oldContract.bendClaimedTotal();
+    }
+
     function getConfig() public pure override returns (Config memory config) {
         config.TREASURY_ADDRESS = address(
             0x472FcC65Fab565f75B1e0E861864A86FE5bcEd7B
@@ -16,11 +28,11 @@ contract BendCompetitionMainnet is BendCompetition {
         );
         config.AUTO_DRAW_DIVIDEND_THRESHOLD = 100 * 10**18;
         config.BEND_TOKEN_REWARD_PER_ETH = 333333 * 10**18;
-        config.MAX_ETH_PAYMENT_PER_ADDR = 1 * 10**18;
+        config.MAX_ETH_PAYMENT_PER_ADDR = 100000 * 10**18;
         config.VEBEND_ADDRESS = address(
             0xd7e97172C2419566839Bf80DeeA46D22B1B2E06E
         );
-        config.VEBEND_LOCK_MIN_WEEK = 2;
+        config.VEBEND_LOCK_MIN_WEEK = 0;
 
         return config;
     }

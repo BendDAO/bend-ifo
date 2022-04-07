@@ -23,3 +23,6 @@ coverage
 .coverage_cache
 .coverage_contracts
 coverage.json
+
+# OpenZeppelin
+.openzeppelin/unknown-*.json
